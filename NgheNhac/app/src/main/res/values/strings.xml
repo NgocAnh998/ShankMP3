@@ -1,0 +1,105 @@
+<resources>
+    <string name="app_name">NgheNhac</string>
+    <!-- Bottom Navigation -->
+    <string name="nav_library">Thư viện</string>
+    <string name="nav_search">Tìm kiếm</string>
+    <string name="nav_settings">Cài đặt</string>
+    <!-- Library -->
+    <string name="tab_songs">Bài hát</string>
+    <string name="tab_albums">Album</string>
+    <string name="tab_artists">Nghệ sĩ</string>
+    <string name="tab_playlists">Playlist</string>
+    <!-- Player -->
+    <string name="unknown_artist">Không rõ</string>
+    <string name="unknown_album">Không rõ</string>
+    <string name="action_back">Quay lại</string>
+    <string name="action_more">Thêm</string>
+    <string name="action_seek">Tua</string>
+    <string name="action_play">Phát</string>
+    <string name="action_pause">Tạm dừng</string>
+    <string name="action_next">Tiếp theo</string>
+    <string name="action_previous">Trước</string>
+    <string name="action_shuffle">Xáo trộn</string>
+    <string name="action_repeat">Lặp lại</string>
+    <!-- Playlist Detail -->
+    <string name="playlist_empty">Chưa có bài hát nào
+Thêm bài hát đầu tiên vào playlist này</string>
+    <string name="action_add_song">Thêm bài hát</string>
+    <string name="action_remove_from_playlist">Xoá khỏi playlist</string>
+    <string name="playlist_song_count_format">%d bài hát</string>
+    <string name="playlist_no_songs">Chưa có bài hát</string>
+    <string name="action_remove">Xoá</string>
+    <!-- Create Playlist Dialog -->
+    <string name="dialog_create_playlist_title">Tạo playlist mới</string>
+    <string name="dialog_create_playlist_hint">Tên playlist</string>
+    <string name="action_create">Tạo</string>
+    <string name="action_creating">Đang tạo…</string>
+    <string name="action_create_playlist">Tạo playlist</string>
+    <string name="playlist_created">Đã tạo playlist "%s"</string>
+    <string name="playlist_create_error">Lỗi tạo playlist: %s</string>
+    <!-- Search -->
+    <string name="search_hint">Tìm kiếm bài hát, nghệ sĩ…</string>
+    <string name="search_no_results">Không tìm thấy kết quả</string>
+    <!-- Settings -->
+    <string name="settings_general">Chung</string>
+    <string name="settings_theme">Giao diện</string>
+    <string name="settings_theme_system">Theo hệ thống</string>
+    <string name="settings_theme_light">Sáng</string>
+    <string name="settings_theme_dark">Tối</string>
+    <string name="settings_cache">Bộ nhớ đệm</string>
+    <string name="settings_clear_cache">Xoá bộ nhớ đệm</string>
+    <string name="settings_about">Giới thiệu</string>
+    <string name="settings_version">Phiên bản</string>
+    <!-- Import/Export -->
+    <string name="action_export_m3u">Xuất M3U</string>
+    <string name="action_export_xml">Xuất XML</string>
+    <string name="action_import">Nhập playlist</string>
+    <string name="export_success">Đã xuất playlist thành công</string>
+    <string name="export_error">Lỗi xuất playlist</string>
+    <string name="import_success">Đã nhập playlist thành công</string>
+    <string name="import_error">Lỗi nhập playlist</string>
+    <string name="import_match_format">Tìm thấy %d/%d bài hát</string>
+    <string name="action_rename">Đổi tên</string>
+    <string name="action_delete">Xoá</string>
+    <string name="playlist_deleted">Đã xoá playlist</string>
+    <string name="action_import_playlist">Nhập playlist từ file</string>
+    <!-- Empty states -->
+    <string name="empty_songs">Chưa có bài hát nào
+Quét MediaStore hoặc thêm nhạc vào thiết bị</string>
+    <string name="empty_albums">Chưa có album nào</string>
+    <string name="empty_artists">Chưa có nghệ sĩ nào</string>
+    <string name="empty_playlists">Chưa có playlist nào
+Nhấn nút + để tạo playlist mới</string>
+    <!-- Permissions -->
+    <string name="permission_storage_title">Truy cập nhạc trên thiết bị</string>
+    <string name="permission_storage_message">NgheNhac cần quyền truy cập MediaStore để quét và phát nhạc từ bộ nhớ thiết bị của bạn.</string>
+    <string name="permission_storage_denied">Không thể load nhạc. Vui lòng cấp quyền truy cập media trong Cài đặt.</string>
+    <string name="action_settings">Cài đặt</string>
+
+    <!-- Auth / Login -->
+    <string name="login_title">Đăng nhập</string>
+    <string name="register_title">Đăng ký</string>
+    <string name="login_subtitle">Đăng nhập để đồng bộ playlist và yêu thích</string>
+    <string name="login_email_hint">Email</string>
+    <string name="login_password_hint">Mật khẩu</string>
+    <string name="login_forgot_password">Quên mật khẩu?</string>
+    <string name="action_login">Đăng nhập</string>
+    <string name="action_register">Đăng ký</string>
+    <string name="login_switch_to_register">Chưa có tài khoản? Đăng ký</string>
+    <string name="login_switch_to_login">Đã có tài khoản? Đăng nhập</string>
+    <string name="login_success">Đăng nhập thành công</string>
+    <string name="register_success">Đăng ký thành công</string>
+    <string name="logout_title">Đăng xuất</string>
+    <string name="logout_message">Bạn có chắc muốn đăng xuất?</string>
+    <string name="action_logout">Đăng xuất</string>
+    <string name="action_reset_password">Đặt lại mật khẩu</string>
+    <string name="action_ok">OK</string>
+    <string name="action_cancel">Huỷ</string>
+    <!-- Settings: Account & Sync -->
+    <string name="settings_account">Tài khoản</string>
+    <string name="settings_account_not_logged_in">Chưa đăng nhập</string>
+    <string name="settings_account_login_prompt">Đăng nhập để đồng bộ playlist và yêu thích</string>
+    <string name="settings_sync">Đồng bộ</string>
+    <string name="settings_sync_auto">Đồng bộ tự động: mỗi 8 giờ</string>
+    <string name="settings_sync_now">Đồng bộ ngay</string>
+</resources>
