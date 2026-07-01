@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="firebase_database_url" translatable="false">https://nghenhac-1b39c-default-rtdb.asia-southeast1.firebasedatabase.app</string>
+    <string name="gcm_defaultSenderId" translatable="false">379898291663</string>
+    <string name="google_api_key" translatable="false">AIzaSyDCopt4E1UUB_rEF1nyy-j-1bYUeW224fE</string>
+    <string name="google_app_id" translatable="false">1:379898291663:android:7211cf4becf6547f6a9eba</string>
+    <string name="google_crash_reporting_api_key" translatable="false">AIzaSyDCopt4E1UUB_rEF1nyy-j-1bYUeW224fE</string>
+    <string name="google_storage_bucket" translatable="false">nghenhac-1b39c.firebasestorage.app</string>
+    <string name="project_id" translatable="false">nghenhac-1b39c</string>
+</resources>

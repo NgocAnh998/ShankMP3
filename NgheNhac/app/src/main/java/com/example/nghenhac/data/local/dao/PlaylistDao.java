@@ -55,6 +55,17 @@ public interface PlaylistDao {
     @Query("SELECT * FROM playlists ORDER BY name ASC")
     List<PlaylistEntity> getAllPlaylistsSync();
 
+    /** Lấy tất cả bài hát trong playlist (sync, không LiveData). Dùng cho background sync. */
+    @Query("SELECT s.* FROM songs s " +
+            "INNER JOIN playlist_songs ps ON s.id = ps.song_id " +
+            "WHERE ps.playlist_id = :playlistId " +
+            "ORDER BY ps.order_index ASC")
+    List<SongEntity> getSongsInPlaylistSync(long playlistId);
+
+    /** Tìm playlist theo tên (sync). Dùng để tránh tạo trùng khi download sync. */
+    @Query("SELECT * FROM playlists WHERE name = :name LIMIT 1")
+    PlaylistEntity findByNameSync(String name);
+
     /**
      * Lấy playlist theo ID.
      *
@@ -185,9 +196,9 @@ public interface PlaylistDao {
      * Output: LiveData — danh sách bài hát trong playlist.
      */
     @Query("SELECT s.* FROM songs s " +
-           "INNER JOIN playlist_songs ps ON s.id = ps.song_id " +
-           "WHERE ps.playlist_id = :playlistId " +
-           "ORDER BY ps.order_index ASC")
+            "INNER JOIN playlist_songs ps ON s.id = ps.song_id " +
+            "WHERE ps.playlist_id = :playlistId " +
+            "ORDER BY ps.order_index ASC")
     LiveData<List<SongEntity>> getSongsInPlaylist(long playlistId);
 
     /**
@@ -220,9 +231,9 @@ public interface PlaylistDao {
      * @return String URI ảnh bìa (có thể null nếu playlist rỗng).
      */
     @Query("SELECT s.album_art_uri FROM songs s " +
-           "INNER JOIN playlist_songs ps ON s.id = ps.song_id " +
-           "WHERE ps.playlist_id = :playlistId " +
-           "ORDER BY ps.order_index ASC LIMIT 1")
+            "INNER JOIN playlist_songs ps ON s.id = ps.song_id " +
+            "WHERE ps.playlist_id = :playlistId " +
+            "ORDER BY ps.order_index ASC LIMIT 1")
     String getFirstSongAlbumArtUri(long playlistId);
 
     /**
@@ -237,8 +248,8 @@ public interface PlaylistDao {
      * @return String tên bài hát đầu tiên (có thể null).
      */
     @Query("SELECT s.title FROM songs s " +
-           "INNER JOIN playlist_songs ps ON s.id = ps.song_id " +
-           "WHERE ps.playlist_id = :playlistId " +
-           "ORDER BY ps.order_index ASC LIMIT 1")
+            "INNER JOIN playlist_songs ps ON s.id = ps.song_id " +
+            "WHERE ps.playlist_id = :playlistId " +
+            "ORDER BY ps.order_index ASC LIMIT 1")
     String getFirstSongTitle(long playlistId);
 }

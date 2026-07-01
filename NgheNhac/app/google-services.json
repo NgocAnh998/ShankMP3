@@ -1,13 +1,14 @@
 {
   "project_info": {
-    "project_number": "840374091316",
-    "project_id": "neural-theory-481912-k0",
-    "storage_bucket": "neural-theory-481912-k0.firebasestorage.app"
+    "project_number": "379898291663",
+    "firebase_url": "https://nghenhac-1b39c-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "nghenhac-1b39c",
+    "storage_bucket": "nghenhac-1b39c.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:840374091316:android:ee3fecac245de464881461",
+        "mobilesdk_app_id": "1:379898291663:android:7211cf4becf6547f6a9eba",
         "android_client_info": {
           "package_name": "com.example.nghenhac"
         }
@@ -15,7 +16,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyBuwDAi8CHBzLNp_jWq1F-ywABHgJrz4w4"
+          "current_key": "AIzaSyDCopt4E1UUB_rEF1nyy-j-1bYUeW224fE"
         }
       ],
       "services": {
