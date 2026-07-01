@@ -43,6 +43,15 @@ public interface SongDao {
     LiveData<List<SongEntity>> getAllSongs();
 
     /**
+     * Lấy tất cả bài hát (phiên bản đồng bộ, không LiveData).
+     *
+     * Dùng khi cần dữ liệu ngay lập tức mà không observe (VD: dialog thêm bài vào playlist).
+     * Gọi từ background thread để tránh block UI.
+     */
+    @Query("SELECT * FROM songs ORDER BY title ASC")
+    List<SongEntity> getAllSongsSync();
+
+    /**
      * Lấy bài hát theo ID.
      *
      * Input: id — khoá chính của bài hát.

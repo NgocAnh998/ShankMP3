@@ -70,6 +70,16 @@ public class SongRepository {
         return songDao.getAllSongs();
     }
 
+    /**
+     * Lấy tất cả bài hát (phiên bản đồng bộ).
+     *
+     * Dùng khi cần dữ liệu ngay lập tức (VD: dialog thêm bài vào playlist).
+     * Gọi từ background thread để tránh block UI.
+     */
+    public List<SongEntity> getAllSongsSync() {
+        return songDao.getAllSongsSync();
+    }
+
     /** Lấy chi tiết một bài hát theo ID. */
     public LiveData<SongEntity> getSongById(long id) {
         return songDao.getSongById(id);

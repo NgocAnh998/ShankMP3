@@ -6,6 +6,8 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -17,28 +19,68 @@ import com.example.nghenhac.sync.FirebaseAuthManager;
 import com.example.nghenhac.sync.SyncWorker;
 
 /**
- * Fragment cài đặt ứng dụng.
+ * ⚙️ SettingsFragment — Màn hình cài đặt ứng dụng.
  *
- * Nguyên lý:
- * - Hiển thị danh sách các tuỳ chọn cài đặt dạng RecyclerView.
- * - Các mục: Tài khoản (đăng nhập/profile), Giao diện, Xoá cache, Giới thiệu.
- * - Tự động refresh danh sách khi trạng thái đăng nhập thay đổi.
+ * ============================================================
+ *  GIẢI THÍCH CHI TIẾT — DÀNH CHO BÁO CÁO ĐỒ ÁN
+ * ============================================================
  *
- * Luồng xử lý:
- * 1. Fragment được tạo → gắn SettingsAdapter với danh sách items.
- * 2. User chọn "Tài khoản" → mở LoginActivity hoặc ProfileActivity.
- * 3. User quay lại từ LoginActivity → refresh danh sách + lên lịch sync.
+ * ─── 1. VAI TRÒ ───
+ * Cung cấp giao diện để người dùng quản lý:
+ *   - 🔑 Tài khoản: Đăng nhập/Đăng xuất/Xem profile
+ *   - 🎨 Giao diện: Theme sáng/tối/theo hệ thống
+ *   - 💾 Bộ nhớ đệm: Xem dung lượng + xoá cache
+ *   - ℹ️ Giới thiệu: Thông tin app, phiên bản
  *
- * Lưu ý:
- * - REQUEST_LOGIN dùng để refresh adapter sau khi login thành công.
- * - SyncWorker.scheduleSync() được gọi sau lần đăng nhập đầu tiên.
+ * ─── 2. KIẾN TRÚC ───
+ *
+ *   ┌─────────────────────────────────────────────────────┐
+ *   │                 SettingsFragment                    │
+ *   │                                                     │
+ *   │  RecyclerView (settings_list)                       │
+ *   │       │                                             │
+ *   │       ▼                                             │
+ *   │  SettingsAdapter                                    │
+ *   │       │                                             │
+ *   │       ├── Item 0: "Tài khoản" (động)              │
+ *   │       │   ├── Chưa đăng nhập → LoginActivity       │
+ *   │       │   └── Đã đăng nhập → ProfileActivity      │
+ *   │       │                                             │
+ *   │       ├── Item 1: Header "Chung"                  │
+ *   │       ├── Item 2: "Giao diện" → Dialog theme     │
+ *   │       ├── Item 3: "Bộ nhớ đệm" → Xoá cache       │
+ *   │       └── Item 4: "Giới thiệu" → About dialog    │
+ *   │                                                     │
+ *   │  ActivityResultLauncher (loginLauncher)             │
+ *   │       └── Nhận kết quả từ LoginActivity            │
+ *   │           → Refresh danh sách + schedule sync       │
+ *   └─────────────────────────────────────────────────────┘
+ *
+ * ─── 3. LUỒNG CHI TIẾT ───
+ *
+ *   Bước 1: Fragment tạo → onViewCreated()
+ *   Bước 2: Setup RecyclerView + LinearLayoutManager
+ *   Bước 3: Tạo SettingsAdapter with this (Fragment)
+ *   Bước 4: Đăng ký loginLauncher (ActivityResultLauncher)
+ *           → Thay thế onActivityResult (deprecated từ Android X)
+ *   Bước 5: refreshSettingsItems() → tạo danh sách items
+ *   Bước 6: User click item → SettingsAdapter.handleItemClick()
+ *   Bước 7: User quay lại từ LoginActivity → onResume()
+ *           → refreshSettingsItems() → cập nhật trạng thái
+ *           → Nếu đã đăng nhập → lên lịch đồng bộ SyncWorker
+ *
+ * ─── 4. ACTIVITY RESULT LAUNCHER ───
+ *   - registerForActivityResult() thay thế onActivityResult() cũ
+ *   - An toàn hơn, không bị ảnh hưởng bởi lifecycle
+ *   - Khi LoginActivity trả về RESULT_OK:
+ *     1. Refresh danh sách (hiển thị email thay vì "Chưa đăng nhập")
+ *     2. Lên lịch đồng bộ Firebase (SyncWorker.scheduleSync())
  */
 public class SettingsFragment extends Fragment {
 
-    static final int REQUEST_LOGIN = 9001;
-
     private SettingsAdapter adapter;
     private RecyclerView settingsList;
+    private ActivityResultLauncher<Intent> loginLauncher;
 
     @Nullable
     @Override
@@ -59,6 +101,19 @@ public class SettingsFragment extends Fragment {
         adapter = new SettingsAdapter(this);
         settingsList.setAdapter(adapter);
 
+        // Đăng ký ActivityResultLauncher — thay thế onActivityResult deprecated
+        loginLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() == getActivity().RESULT_OK) {
+                        refreshSettingsItems();
+                        // Lên lịch đồng bộ background sau khi đăng nhập
+                        if (FirebaseAuthManager.getInstance().isLoggedIn()) {
+                            SyncWorker.scheduleSync(requireContext());
+                        }
+                    }
+                });
+
         refreshSettingsItems();
     }
 
@@ -70,34 +125,26 @@ public class SettingsFragment extends Fragment {
     }
 
     /**
-     * Xử lý kết quả từ LoginActivity.
+     * Lấy loginLauncher để SettingsAdapter dùng mở LoginActivity.
+     * SettingsAdapter không có Activity context, nên cần lấy từ Fragment.
      *
-     * Nguyên lý:
-     * - Khi login thành công → refresh danh sách + schedule sync background.
-     *
-     * Input:
-     * @param requestCode REQUEST_LOGIN.
-     * @param resultCode  RESULT_OK nếu login thành công.
-     * @param data        Intent (không dùng).
+     * @return ActivityResultLauncher để start activity và nhận kết quả
      */
-    @Override
-    public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_LOGIN && resultCode == getActivity().RESULT_OK) {
-            refreshSettingsItems();
-            // Lên lịch đồng bộ background sau khi đăng nhập
-            if (FirebaseAuthManager.getInstance().isLoggedIn()) {
-                SyncWorker.scheduleSync(requireContext());
-            }
-        }
+    public ActivityResultLauncher<Intent> getLoginLauncher() {
+        return loginLauncher;
     }
 
     /**
-     * Refresh danh sách mục cài đặt.
+     * ─── LÀM MỚI DANH SÁCH CÀI ĐẶT ───
      *
-     * Nguyên lý:
-     * - Tạo lại danh sách items từ SettingsAdapter.createDefaultItems().
-     * - Items động: Account item thay đổi theo trạng thái đăng nhập.
+     * Gọi lại mỗi khi:
+     *   - Fragment vừa tạo (lần đầu)
+     *   - User quay lại từ LoginActivity/ProfileActivity
+     *
+     * Tạo danh sách items MỚI → adapter.setItems() → notifyDataSetChanged()
+     * Items THAY ĐỔI theo trạng thái đăng nhập:
+     *   - Chưa đăng nhập: subtitle = "Chưa đăng nhập"
+     *   - Đã đăng nhập:   subtitle = email user
      */
     private void refreshSettingsItems() {
         if (adapter != null) {

@@ -173,9 +173,9 @@ public class PlaylistAdapter extends ListAdapter<PlaylistEntity, PlaylistAdapter
 
         @Override
         public boolean areContentsTheSame(@NonNull PlaylistEntity oldItem, @NonNull PlaylistEntity newItem) {
-            return oldItem.getName().equals(newItem.getName())
+            return java.util.Objects.equals(oldItem.getName(), newItem.getName())
                     && oldItem.getSongCount() == newItem.getSongCount()
-                    && oldItem.getDescription().equals(newItem.getDescription());
+                    && java.util.Objects.equals(oldItem.getDescription(), newItem.getDescription());
         }
 
         @Nullable

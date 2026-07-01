@@ -5,29 +5,67 @@ import androidx.media3.common.Player;
 import androidx.media3.session.MediaSession;
 
 /**
- * Quản lý MediaSession — cầu nối giữa ExoPlayer và các controller bên ngoài (notification, Bluetooth, lock screen).
+ * 🎮 MediaSessionManager — Cầu nối giữa ExoPlayer và các controller bên ngoài.
  *
- * Nguyên lý:
- * - MediaSession cho phép các MediaController (VD: system UI, Bluetooth, Android Auto) điều khiển playback.
- * - Callback xử lý các lệnh: play, pause, stop, seekTo, skipToNext, skipToPrevious.
- * - Kết nối trực tiếp với MusicPlayer (singleton) để thực thi các lệnh.
- * - onConnect() xác định các lệnh mà controller được phép gửi.
+ * ============================================================
+ *  GIẢI THÍCH CHI TIẾT — DÀNH CHO BÁO CÁO ĐỒ ÁN
+ * ============================================================
  *
- * Luồng xử lý:
- * 1. MusicService.onCreate() → tạo MediaSession với MusicPlayer.getExoPlayer() + callback này.
- * 2. System/Bluetooth gửi lệnh PLAY → onPlay() → MusicPlayer.play().
- * 3. User bấm next trên notification → onSkipToNext() → MusicPlayer.next().
- * 4. User seek trên lock screen → onSeekTo() → MusicPlayer.seekTo().
+ * ─── 1. VAI TRÒ ───
+ * Class này là CẦU NỐI giữa:
+ *   - ExoPlayer (engine phát nhạc thật sự)
+ *   - Các thiết bị điều khiển bên ngoài (notification, Bluetooth, màn hình khoá)
  *
- * Input:
- * - MusicPlayer instance (singleton) để thao tác playback.
+ * ─── 2. VÍ DỤ THỰC TẾ ───
+ * Giống như REMOTE ĐIỀU KHIỂN TV:
+ *   - TV   = ExoPlayer (phát nhạc)
+ *   - Remote = MediaSessionManager (nhận lệnh từ người dùng)
+ *   - Nút trên remote = Các controller (notification, Bluetooth)
  *
- * Output:
- * - Các lệnh playback được chuyển đến ExoPlayer.
+ * Khi user bấm nút "Next" trên tai nghe Bluetooth:
+ *   Bluetooth → Android → MediaSession → onSkipToNext() → MusicPlayer.next()
  *
- * Lưu ý:
- * - Tất cả callback đều chạy trên main thread.
- * - Cần kiểm tra MusicPlayer.getExoPlayer() != null trước khi thao tác.
+ * ─── 3. LUỒNG CHI TIẾT ───
+ *
+ *   ┌─────────────────────────────────────────────────────────────┐
+ *   │                    MediaSessionManager                      │
+ *   │                                                             │
+ *   │  MusicService (Service)                                     │
+ *   │       │                                                     │
+ *   │       ├── Tạo MediaSessionManager(service, player, callback)│
+ *   │       │                                                     │
+ *   │       ▼                                                     │
+ *   │  MediaSession.Builder(service, player)                      │
+ *   │       │  .setCallback(callback)                             │
+ *   │       │  .build()                                           │
+ *   │       │                                                     │
+ *   │       ▼                                                     │
+ *   │  Các Controller kết nối:                                    │
+ *   │  ┌──────────┐  ┌──────────┐  ┌──────────┐                  │
+ *   │  │Notification│  │Bluetooth │  │LockScreen│                  │
+ *   │  └─────┬────┘  └─────┬────┘  └─────┬────┘                  │
+ *   │        │             │             │                        │
+ *   │        └─────────────┼─────────────┘                        │
+ *   │                      ▼                                      │
+ *   │            MediaSession.Callback                            │
+ *   │  ┌─────────────────────────────────────────────────┐       │
+ *   │  │  onPlay()       → MusicPlayer.play()           │       │
+ *   │  │  onPause()      → MusicPlayer.pause()          │       │
+ *   │  │  onSkipToNext() → MusicPlayer.next()           │       │
+ *   │  │  onSkipToPrev() → MusicPlayer.previous()       │       │
+ *   │  │  onSeekTo(pos)  → MusicPlayer.seekTo(pos)      │       │
+ *   │  │  onStop()       → stopForeground() + stopSelf()│       │
+ *   │  └─────────────────────────────────────────────────┘       │
+ *   │                      │                                      │
+ *   │                      ▼                                      │
+ *   │                  ExoPlayer (phát nhạc)                      │
+ *   └─────────────────────────────────────────────────────────────┘
+ *
+ * ─── 4. LƯU Ý ───
+ * - Tất cả callback chạy trên MAIN thread
+ * - Cần kiểm tra null trước khi gọi MusicPlayer
+ * - onConnect() có thể giới hạn quyền của từng controller
+ *   (VD: chỉ cho phép Bluetooth điều khiển, không cho app khác)
  */
 public class MediaSessionManager {
 
@@ -35,17 +73,17 @@ public class MediaSessionManager {
     private MusicService service;
 
     /**
-     * Khởi tạo MediaSession từ MusicService.
+     * ─── KHỞI TẠO MEDIASESSION ───
      *
-     * Nguyên lý:
-     * - Tạo MediaSession với Player từ MusicPlayer.
-     * - Set callback để xử lý các lệnh điều khiển.
-     * - Lưu reference đến service để start/stop foreground.
+     * LUỒNG:
+     *  1. Nhận service context + ExoPlayer + callback
+     *  2. Tạo MediaSession.Builder với service và player
+     *  3. Gắn callback (xử lý play/pause/next/prev/seek/stop)
+     *  4. Build → MediaSession sẵn sàng cho controller kết nối
      *
-     * Input:
-     * @param service        MusicService instance (để gọi startForeground/stopForeground).
-     * @param player         ExoPlayer instance từ MusicPlayer.
-     * @param callback       Custom callback xử lý các lệnh.
+     * @param service  MusicService instance (để start/stop foreground)
+     * @param player   ExoPlayer instance từ MusicPlayer
+     * @param callback Custom callback xử lý các lệnh điều khiển
      */
     public MediaSessionManager(@NonNull MusicService service,
                                @NonNull Player player,
@@ -57,16 +95,19 @@ public class MediaSessionManager {
     }
 
     /**
-     * Lấy MediaSession instance.
+     * Lấy MediaSession instance để MusicService trả về từ onGetSession().
      *
-     * Output: MediaSession để trả về từ onGetSession() của MusicService.
+     * @return MediaSession cho controller bên ngoài kết nối
      */
     public MediaSession getSession() {
         return mediaSession;
     }
 
     /**
-     * Giải phóng MediaSession. Gọi trong onDestroy() của MusicService.
+     * ─── GIẢI PHÓNG MEDIASESSION ───
+     *
+     * Gọi trong onDestroy() của MusicService.
+     * Ngắt kết nối tất cả controller (notification, Bluetooth, lock screen).
      */
     public void release() {
         if (mediaSession != null) {

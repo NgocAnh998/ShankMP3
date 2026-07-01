@@ -44,11 +44,23 @@ public class MusicService extends MediaSessionService {
         super.onCreate();
 
         // Lấy MusicPlayer instance (singleton)
-        musicPlayer = MusicPlayer.getInstance(this);
-        musicPlayer.initialize();
+        musicPlayer = MusicPlayer.getInstance(this); //Lấy trình phát nhạc
+        musicPlayer.initialize(); //Khởi tạo ExoPlayer
+
+        // Kiểm tra ExoPlayer không null trước khi tạo MediaSession
+        androidx.media3.exoplayer.ExoPlayer exoPlayer = musicPlayer.getExoPlayer();
+        if (exoPlayer == null) {
+            // Nếu ExoPlayer chưa được khởi tạo, tạo lại
+            musicPlayer.initialize();
+            exoPlayer = musicPlayer.getExoPlayer();
+        }
+        if (exoPlayer == null) {
+            // Vẫn null — không thể tạo MediaSession
+            return;
+        }
 
         // Tạo MediaSession từ ExoPlayer — Media3 tự xử lý play/pause/next/prev qua Player
-        mediaSession = new MediaSession.Builder(this, musicPlayer.getExoPlayer())
+        mediaSession = new MediaSession.Builder(this, exoPlayer)
                 .build();
 
         // Lắng nghe sự kiện playback để cập nhật notification
@@ -99,6 +111,10 @@ public class MusicService extends MediaSessionService {
 
     @Override
     public void onDestroy() {
+        // Huỷ listener để tránh memory leak
+        if (musicPlayer != null) {
+            musicPlayer.getEventListener().setListener(null);
+        }
         // Giải phóng MediaSession trước
         if (mediaSession != null) {
             mediaSession.release();

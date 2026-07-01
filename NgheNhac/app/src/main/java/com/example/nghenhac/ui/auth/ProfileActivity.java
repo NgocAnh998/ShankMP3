@@ -6,6 +6,8 @@ import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -54,6 +56,7 @@ public class ProfileActivity extends AppCompatActivity {
     private FirebaseAuthManager authManager;
     private FirebaseSyncManager syncManager;
     private ExecutorService executor;
+    private ActivityResultLauncher<Intent> loginLauncher;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,6 +66,16 @@ public class ProfileActivity extends AppCompatActivity {
         authManager = FirebaseAuthManager.getInstance();
         syncManager = FirebaseSyncManager.getInstance(this);
         executor = Executors.newSingleThreadExecutor();
+
+        // Đăng ký ActivityResultLauncher (thay thế startActivityForResult deprecated)
+        loginLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() == RESULT_OK) {
+                        updateUI();
+                        showSnackbar("Đăng nhập thành công");
+                    }
+                });
 
         initViews();
         updateUI();
@@ -88,7 +101,7 @@ public class ProfileActivity extends AppCompatActivity {
         logoutButton.setOnClickListener(v -> showLogoutConfirmation());
         loginButton.setOnClickListener(v -> {
             Intent intent = new Intent(this, LoginActivity.class);
-            startActivityForResult(intent, REQUEST_LOGIN);
+            loginLauncher.launch(intent);
         });
     }
 
@@ -113,16 +126,7 @@ public class ProfileActivity extends AppCompatActivity {
         }
     }
 
-    private static final int REQUEST_LOGIN = 1001;
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_LOGIN && resultCode == RESULT_OK) {
-            updateUI();
-            showSnackbar("Đăng nhập thành công");
-        }
-    }
+    // Xoá onActivityResult — dùng loginLauncher thay thế
 
     /**
      * Thực hiện đồng bộ thủ công.

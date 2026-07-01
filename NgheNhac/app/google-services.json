@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "000000000000",
-    "project_id": "nghenhac-placeholder",
-    "storage_bucket": "nghenhac-placeholder.appspot.com"
+    "project_number": "840374091316",
+    "project_id": "neural-theory-481912-k0",
+    "storage_bucket": "neural-theory-481912-k0.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:000000000000:android:0000000000000000",
+        "mobilesdk_app_id": "1:840374091316:android:ee3fecac245de464881461",
         "android_client_info": {
           "package_name": "com.example.nghenhac"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "PLACEHOLDER_API_KEY_REPLACE_ME"
+          "current_key": "AIzaSyBuwDAi8CHBzLNp_jWq1F-ywABHgJrz4w4"
         }
       ],
       "services": {

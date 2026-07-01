@@ -47,6 +47,15 @@ public interface PlaylistDao {
     LiveData<List<PlaylistEntity>> getAllPlaylists();
 
     /**
+     * Lấy tất cả playlist (phiên bản đồng bộ, không LiveData).
+     *
+     * Dùng khi cần dữ liệu ngay lập tức mà không observe (VD: picker dialog thêm bài vào playlist).
+     * Gọi từ background thread để tránh block UI.
+     */
+    @Query("SELECT * FROM playlists ORDER BY name ASC")
+    List<PlaylistEntity> getAllPlaylistsSync();
+
+    /**
      * Lấy playlist theo ID.
      *
      * Input: id — khoá chính của playlist.

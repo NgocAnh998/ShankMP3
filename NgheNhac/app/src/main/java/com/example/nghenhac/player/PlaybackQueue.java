@@ -299,8 +299,16 @@ public class PlaybackQueue {
      * - Tạo danh sách index [0, 1, 2, ..., size-1].
      * - Shuffle ngẫu nhiên.
      * - Đưa currentIndex lên đầu danh sách để bài hiện tại không thay đổi.
+     *
+     * Lưu ý:
+     * - Kiểm tra mediaItems không rỗng và currentIndex >= 0 trước khi tạo.
+     * - Nếu currentIndex = -1 (queue rỗng), xoá shuffledIndices.
      */
     private void buildShuffledIndices() {
+        if (mediaItems.isEmpty() || currentIndex < 0) {
+            shuffledIndices = null;
+            return;
+        }
         List<Integer> indices = new ArrayList<>();
         for (int i = 0; i < mediaItems.size(); i++) {
             if (i != currentIndex) {

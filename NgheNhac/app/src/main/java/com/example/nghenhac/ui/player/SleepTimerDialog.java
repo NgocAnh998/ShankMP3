@@ -9,23 +9,81 @@ import android.widget.RadioGroup;
 import com.example.nghenhac.R;
 
 /**
- * Dialog chọn sleep timer — tự động dừng nhạc sau khoảng thời gian nhất định.
+ * ⏰ SleepTimerDialog — Hẹn giờ tự động tắt nhạc.
  *
- * Nguyên lý:
- * - Cho phép người dùng chọn thời gian: 10 phút, 15 phút, 30 phút, 45 phút, 60 phút.
- * - Khi timer hết, gọi callback onSleepTimerEnd() để dừng nhạc.
- * - Hiển thị thời gian còn lại trên dialog (dùng CountDownTimer).
- * - Có thể huỷ timer trước khi hết giờ.
+ * ============================================================
+ *  GIẢI THÍCH CHI TIẾT — DÀNH CHO BÁO CÁO ĐỒ ÁN
+ * ============================================================
  *
- * Luồng xử lý:
- * 1. User mở dialog → chọn thời gian → bấm "Bắt đầu".
- * 2. CountDownTimer chạy → dialog hiển thị thời gian còn lại.
- * 3. Timer kết thúc → callback onSleepTimerEnd() → MusicPlayer.pause().
- * 4. User có thể huỷ timer bất kỳ lúc nào.
+ * ─── 1. VAI TRÒ ───
+ * Cho phép người dùng hẹn giờ TẮT NHẠC SAU N PHÚT.
+ * Hữu ích khi: nghe nhạc trước khi ngủ → nhạc tự tắt → không hao pin.
  *
- * Input:
- * - Context để tạo dialog.
- * - Callback để xử lý khi timer kết thúc.
+ * ─── 2. CÔNG NGHỆ ───
+ *   CountDownTimer: Bộ đếm ngược của Android.
+ *   - Chạy trên MAIN thread (UI thread)
+ *   - onTick() được gọi MỖI GIÂY (1000ms)
+ *   - onFinish() được gọi khi hết thời gian
+ *
+ * ─── 3. VÍ DỤ THỰC TẾ ───
+ *   Giống như bạn đặt BÁO THỨC:
+ *   - Chọn "30 phút" → bắt đầu đếm
+ *   - Hết 30 phút → chuông reo (ở đây: nhạc dừng)
+ *   - Có thể HUỶ bất kỳ lúc nào
+ *
+ * ─── 4. LUỒNG CHI TIẾT ───
+ *
+ *   ┌─────────────────────────────────────────────────────┐
+ *   │              LUỒNG SLEEP TIMER                      │
+ *   │                                                     │
+ *   │   User mở dialog → SleepTimerDialog.show(context)   │
+ *   │       │                                             │
+ *   │       ├── ĐANG CÓ TIMER? → showCancelDialog()      │
+ *   │       │   → "Huỷ hẹn giờ?"                       │
+ *   │       │                                             │
+ *   │       └── CHƯA CÓ TIMER → RadioGroup chọn           │
+ *   │           ├── ○ 10 phút                             │
+ *   │           ├── ○ 15 phút                             │
+ *   │           ├── ● 30 phút (mặc định)                 │
+ *   │           ├── ○ 45 phút                             │
+ *   │           └── ○ 60 phút                             │
+ *   │               │                                     │
+ *   │               ▼                                     │
+ *   │           Bấm "Bắt đầu"                            │
+ *   │               │                                     │
+ *   │               ▼                                     │
+ *   │   CountDownTimer.start(durationMs, 1000ms)          │
+ *   │       │                                             │
+ *   │       ├── onTick(): mỗi 1 giây                      │
+ *   │       │   → Có thể cập nhật "Còn 29:59"          │
+ *   │       │                                             │
+ *   │       └── onFinish(): hết giờ                      │
+ *   │           → listener.onSleepTimerEnd()              │
+ *   │           → MusicPlayer.pause() → nhạc DỪNG        │
+ *   │           → currentTimer = null (reset)            │
+ *   │                                                     │
+ *   │   User có thể HUỶ bất kỳ lúc:                      │
+ *   │   → SleepTimerDialog.cancelTimer()                  │
+ *   │   → currentTimer.cancel() + currentTimer = null    │
+ *   └─────────────────────────────────────────────────────┘
+ *
+ * ─── 5. CÁC LỰA CHỌN THỜI GIAN ───
+ *
+ *   Lựa chọn  |  milliseconds
+ *   ──────────┼──────────────
+ *   10 phút   |  600,000 ms
+ *   15 phút   |  900,000 ms
+ *   30 phút   |  1,800,000 ms (mặc định)
+ *   45 phút   |  2,700,000 ms
+ *   60 phút   |  3,600,000 ms
+ *
+ * ─── 6. LƯU Ý ───
+ *   - CountDownTimer chạy trên MAIN thread → KHÔNG block UI
+ *   - Nếu app bị KILL, timer cũng mất (chạy trong process app)
+ *   - Để chạy kể cả khi app tắt: cần AlarmManager hoặc WorkManager
+ *   - onTick() mỗi 1 giây → phù hợp để cập nhật UI, không quá nặng
+ *   - Static fields: chỉ 1 timer duy nhất cho toàn app
+ *     → Tránh xung đột (2 timer cùng lúc)
  */
 public class SleepTimerDialog {
 
@@ -34,7 +92,13 @@ public class SleepTimerDialog {
     private static long selectedDurationMs = 0;
 
     /**
-     * Callback khi sleep timer kết thúc.
+     * ─── CALLBACK KHI TIMER KẾT THÚC ───
+     *
+     * Interface này được gọi khi CountDownTimer kết thúc.
+     * Activity/Fragment implement interface này để xử lý:
+     *   - Gọi MusicPlayer.pause() → dừng nhạc
+     *   - Hiển thị thông báo "Đã hết giờ"
+     *   - Cập nhật UI (nếu cần)
      */
     public interface OnSleepTimerListener {
         /** Được gọi khi timer hết giờ — nên gọi MusicPlayer.pause(). */
@@ -42,16 +106,17 @@ public class SleepTimerDialog {
     }
 
     /**
-     * Hiển thị dialog chọn sleep timer.
+     * ─── HIỂN THỊ SLEEP TIMER DIALOG ───
      *
-     * Nguyên lý:
-     * - Nếu đang có timer chạy, hiển thị tuỳ chọn huỷ.
-     * - Nếu chưa có timer, hiển thị các lựa chọn thời gian.
-     * - Dùng RadioGroup cho các lựa chọn thời gian.
+     * LUỒNG:
+     *   1. Kiểm tra có timer đang chạy không?
+     *      - CÓ → showCancelDialog() (hỏi user có muốn huỷ không)
+     *      - KHÔNG → Hiển thị RadioGroup chọn thời gian
+     *   2. User chọn thời gian → bấm "Bắt đầu"
+     *   3. startTimer(context, durationMs, listener)
      *
-     * Input:
-     * @param context  Context để tạo dialog.
-     * @param listener Callback khi timer kết thúc (có thể null).
+     * @param context  Context để tạo AlertDialog
+     * @param listener Callback khi timer kết thúc (gọi MusicPlayer.pause())
      */
     public static void show(Context context, OnSleepTimerListener listener) {
         // Nếu đang có timer chạy, hiển thị dialog huỷ
@@ -96,17 +161,14 @@ public class SleepTimerDialog {
     }
 
     /**
-     * Bắt đầu đếm ngược.
+     * ─── BẮT ĐẦU ĐẾM NGƯỢC ───
      *
-     * Nguyên lý:
-     * - Tạo CountDownTimer với thời gian đã chọn.
-     * - Mỗi giây cập nhật thời gian còn lại.
-     * - Khi kết thúc, gọi callback và reset timer.
+     * Tạo CountDownTimer và bắt đầu đếm.
      *
-     * Input:
-     * @param context       Context.
-     * @param durationMs    Thời gian (milliseconds).
-     * @param listener      Callback khi kết thúc.
+     * @param context    Context
+     * @param durationMs Thời gian tính bằng milliseconds
+     *                   (VD: 30 phút = 30 * 60 * 1000 = 1,800,000ms)
+     * @param listener   Callback khi hết giờ
      */
     private static void startTimer(Context context, long durationMs,
                                    OnSleepTimerListener listener) {
@@ -131,11 +193,14 @@ public class SleepTimerDialog {
     }
 
     /**
-     * Hiển thị dialog huỷ timer đang chạy.
+     * ─── HIỂN THỊ DIALOG HUỶ TIMER ───
      *
-     * Nguyên lý:
-     * - Hiển thị thông báo "Đang hẹn giờ..." và nút "Huỷ".
-     * - Khi user bấm huỷ, gọi cancelTimer().
+     * Khi user mở SleepTimerDialog lần nữa (timer đang chạy):
+     *   - Hiển thị "Đang hẹn giờ... Bạn có muốn huỷ không?"
+     *   - "Huỷ hẹn giờ" → cancelTimer()
+     *   - "Giữ nguyên" → đóng dialog, timer tiếp tục
+     *
+     * @param context Context để tạo AlertDialog
      */
     private static void showCancelDialog(Context context) {
         AlertDialog.Builder builder = new AlertDialog.Builder(context);
@@ -147,7 +212,13 @@ public class SleepTimerDialog {
     }
 
     /**
-     * Huỷ timer đang chạy.
+     * ─── HUỶ TIMER ───
+     *
+     * Dừng CountDownTimer nếu đang chạy.
+     * Gọi trong các trường hợp:
+     *   - User bấm "Huỷ hẹn giờ"
+     *   - Activity/Fragment bị destroy (tránh memory leak)
+     *   - User chọn bài hát khác (tuỳ chọn)
      */
     public static void cancelTimer() {
         if (currentTimer != null) {

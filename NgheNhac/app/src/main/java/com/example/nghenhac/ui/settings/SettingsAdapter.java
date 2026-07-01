@@ -28,19 +28,65 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * Adapter cho RecyclerView trong SettingsFragment.
+ * ⚙️ SettingsAdapter — Hiển thị danh sách các mục cài đặt.
  *
- * Nguyên lý:
- * - Hiển thị danh sách các mục cài đặt dạng list.
- * - Mỗi mục có: title, subtitle, hành động khi click.
- * - Hỗ trợ các loại: header, item (click).
- * - Các mục động: Tài khoản, Theme, Xoá cache, Giới thiệu.
+ * ============================================================
+ *  GIẢI THÍCH CHI TIẾT — DÀNH CHO BÁO CÁO ĐỒ ÁN
+ * ============================================================
  *
- * Luồng xử lý:
- * 1. Fragment khởi tạo → adapter.setItems().
- * 2. User click item → handleItemClick() → xử lý tương ứng.
- * 3. Cache: xoá cache + hiển thị dung lượng cache hiện tại.
- * 4. About: hiển thị dialog thông tin app đầy đủ.
+ * ─── 1. VAI TRÒ ───
+ * Quản lý danh sách các mục cài đặt dạng RecyclerView.
+ * Mỗi mục gồm: id (định danh), title, subtitle, type (header/item).
+ * Khi user click → xử lý hành động tương ứng.
+ *
+ * ─── 2. CÁC LOẠI ITEM ───
+ *
+ *   TYPE_HEADER: Chỉ hiển thị tiêu đề, không click được
+ *   TYPE_ITEM:    Có thể click, mỗi item có id riêng để xử lý
+ *
+ * ─── 3. CÁC MỤC CÀI ĐẶT ───
+ *
+ *   ┌──────────────────────────────────────────────────────┐
+ *   │  🔑 Tài khoản (id: "account")                       │
+ *   │  ├── Chưa đăng nhập                                  │
+ *   │  │    → Click → LoginActivity (đăng nhập)           │
+ *   │  └── Đã đăng nhập (hiển thị email)                   │
+ *   │       → Click → ProfileActivity (xem profile)       │
+ *   │                                                      │
+ *   │  ─── CHUNG (header) ───                              │
+ *   │                                                      │
+ *   │  🎨 Giao diện (id: "theme")                        │
+ *   │  ├── Click → Dialog chọn theme                      │
+ *   │  │    ● Theo hệ thống                                │
+ *   │  │    ○ Sáng                                         │
+ *   │  │    ○ Tối                                          │
+ *   │  └── (TODO: lưu và áp dụng theme)                    │
+ *   │                                                      │
+ *   │  💾 Bộ nhớ đệm (id: "clear_cache")                 │
+ *   │  ├── Click → Dialog xác nhận                        │
+ *   │  ├── Hiển thị: "Đã dùng 15.3 MB"                   │
+ *   │  └── Xoá → CacheDataSourceFactory.clearCache()      │
+ *   │                                                      │
+ *   │  ℹ️ Giới thiệu (id: "about")                       │
+ *   │     ├── Click → Dialog thông tin app                 │
+ *   │     └── Hiển thị: "Phiên bản 1.0"                  │
+ *   └──────────────────────────────────────────────────────┘
+ *
+ * ─── 4. LUỒNG XỬ LÝ CLICK ───
+ *
+ *   User click item → handleItemClick(item)
+ *       │
+ *       ├── "account"     → LoginActivity / ProfileActivity
+ *       ├── "theme"       → showThemeDialog()
+ *       ├── "clear_cache" → showClearCacheDialog() + clearCache()
+ *       └── "about"       → showAboutDialog()
+ *
+ * ─── 5. TÍNH NĂNG NỔI BẬT ───
+ *   - Cache tự động tính dung lượng và hiển thị (formatFileSize)
+ *   - Cache xoá trên BACKGROUND thread (ExecutorService)
+ *   - Cập nhật subtitle cache sau khi xoá
+ *   - MaterialAlertDialog cho tất cả dialog (Material Design 3)
+ *   - Snackbar thông báo kết quả
  */
 public class SettingsAdapter extends RecyclerView.Adapter<SettingsAdapter.ViewHolder> {
 
@@ -91,7 +137,14 @@ public class SettingsAdapter extends RecyclerView.Adapter<SettingsAdapter.ViewHo
     }
 
     /**
-     * Xử lý click trên từng mục cài đặt.
+     * ─── XỬ LÝ CLICK TRÊN TỪNG MỤC ───
+     *
+     * Dựa vào item.id để quyết định hành động:
+     *
+     *   "account"     → Kiểm tra đăng nhập → Login/Profile
+     *   "theme"       → Dialog chọn theme
+     *   "clear_cache" → Dialog xác nhận → Clear cache
+     *   "about"       → Dialog thông tin app
      */
     private void handleItemClick(SettingsItem item) {
         if (fragment == null || fragment.getActivity() == null) return;
@@ -103,7 +156,13 @@ public class SettingsAdapter extends RecyclerView.Adapter<SettingsAdapter.ViewHo
                     fragment.startActivity(intent);
                 } else {
                     Intent intent = new Intent(fragment.getActivity(), LoginActivity.class);
-                    fragment.startActivityForResult(intent, SettingsFragment.REQUEST_LOGIN);
+                    // Dùng loginLauncher từ SettingsFragment (ActivityResultLauncher)
+                    if (fragment.getLoginLauncher() != null) {
+                        fragment.getLoginLauncher().launch(intent);
+                    } else {
+                        // Fallback: start thường (không nhận kết quả)
+                        fragment.startActivity(intent);
+                    }
                 }
                 break;
             case "theme":
@@ -119,7 +178,15 @@ public class SettingsAdapter extends RecyclerView.Adapter<SettingsAdapter.ViewHo
     }
 
     /**
-     * Hiển thị dialog chọn theme.
+     * ─── DIALOG CHỌN THEME ───
+     *
+     * Hiển thị 3 lựa chọn:
+     *   - Theo hệ thống: tự động theo cài đặt hệ thống Android
+     *   - Sáng: luôn ở chế độ sáng
+     *   - Tối: luôn ở chế độ tối
+     *
+     * TODO: Lưu preference và gọi AppCompatDelegate.setDefaultNightMode()
+     *       để áp dụng ngay lập tức.
      */
     private void showThemeDialog() {
         String[] themes = {
@@ -139,12 +206,21 @@ public class SettingsAdapter extends RecyclerView.Adapter<SettingsAdapter.ViewHo
     }
 
     /**
-     * Xoá cache MediaStore và hiển thị thông báo.
+     * ─── XOÁ CACHE ───
      *
-     * Nguyên lý:
-     * - Lấy CacheDataSourceFactory instance.
-     * - Gọi clearCache() trên executor background.
-     * - Snackbar thông báo kết quả.
+     * Xoá toàn bộ file cache đã tải khi stream nhạc.
+     * Chạy trên BACKGROUND thread (ExecutorService) để không block UI.
+     *
+     * LUỒNG:
+     *   1. Lấy CacheDataSourceFactory instance (Singleton)
+     *   2. Gọi cacheFactory.clearCache() — xoá file trong cache dir
+     *   3. Hiển thị Snackbar "Đã xoá bộ nhớ đệm"
+     *   4. Cập nhật lại dung lượng cache = 0 B
+     *
+     * LƯU Ý:
+     *   - Chỉ xoá CACHE (các chunk nhạc đã tải tạm thời)
+     *   - KHÔNG ảnh hưởng đến: bài hát yêu thích, playlist, tài khoản
+     *   - Chạy background để không làm treo UI
      */
     private void clearCache() {
         executor.execute(() -> {
@@ -177,7 +253,16 @@ public class SettingsAdapter extends RecyclerView.Adapter<SettingsAdapter.ViewHo
     }
 
     /**
-     * Cập nhật dung lượng cache hiển thị trong settings.
+     * ─── CẬP NHẬT DUNG LƯỢNG CACHE ───
+     *
+     * Tính dung lượng cache hiện tại và cập nhật vào subtitle của item.
+     * Chạy trên BACKGROUND thread.
+     *
+     * LUỒNG:
+     *   1. Lấy CacheDataSourceFactory → cacheFactory.getCurrentCacheSize()
+     *   2. Định dạng bytes → "15.3 MB" (formatFileSize)
+     *   3. Cập nhật item "clear_cache" với subtitle mới
+     *   4. Gọi setItems() → notifyDataSetChanged() → UI cập nhật
      */
     private void refreshCacheSize() {
         executor.execute(() -> {
@@ -210,12 +295,14 @@ public class SettingsAdapter extends RecyclerView.Adapter<SettingsAdapter.ViewHo
     }
 
     /**
-     * Định dạng dung lượng file (bytes → KB/MB/GB).
+     * ─── ĐỊNH DẠNG DUNG LƯỢNG ───
      *
-     * Input:
-     * @param bytes Dung lượng (bytes).
+     * Chuyển đổi bytes → định dạng dễ đọc:
+     *   1024 B       → "1.0 KB"
+     *   15728640 B   → "15.0 MB"
+     *   1073741824 B → "1.0 GB"
      *
-     * Output:
+     * @param bytes Dung lượng (bytes)
      * @return Chuỗi định dạng: "1.5 MB", "500 KB", ...
      */
     private String formatFileSize(long bytes) {
@@ -232,7 +319,10 @@ public class SettingsAdapter extends RecyclerView.Adapter<SettingsAdapter.ViewHo
     }
 
     /**
-     * Hiển thị dialog xác nhận xoá cache.
+     * ─── DIALOG XÁC NHẬN XOÁ CACHE ───
+     *
+     * Hiển thị dung lượng cache hiện tại + xác nhận.
+     * Nếu user đồng ý → gọi clearCache() (background thread).
      */
     private void showClearCacheDialog() {
         executor.execute(() -> {
@@ -260,11 +350,15 @@ public class SettingsAdapter extends RecyclerView.Adapter<SettingsAdapter.ViewHo
     }
 
     /**
-     * Hiển thị dialog giới thiệu về ứng dụng (nâng cấp).
+     * ─── DIALOG GIỚI THIỆU ───
      *
-     * Nguyên lý:
-     * - Hiển thị thông tin app, phiên bản, mô tả tính năng.
-     * - Có nút để đánh giá hoặc chia sẻ app.
+     * Hiển thị thông tin ứng dụng:
+     *   - Tên app + version (BuildConfig.VERSION_NAME)
+     *   - Danh sách tính năng chính
+     *   - Thông tin bảo mật
+     *   - Nút "Đóng góp" (feedback)
+     *
+     * BuildConfig.VERSION_NAME được tự động sinh từ build.gradle.kts.
      */
     private void showAboutDialog() {
         String appName = fragment.getString(R.string.app_name);
@@ -329,7 +423,21 @@ public class SettingsAdapter extends RecyclerView.Adapter<SettingsAdapter.ViewHo
     }
 
     /**
-     * Tạo danh sách items mặc định cho Settings.
+     * ─── TẠO DANH SÁCH ITEMS MẶC ĐỊNH ───
+     *
+     * Tạo danh sách các mục cài đặt dựa trên trạng thái hiện tại:
+     *
+     *   1. TÀI KHOẢN (động)
+     *      - Đã đăng nhập: hiển thị email user
+     *      - Chưa đăng nhập: "Chưa đăng nhập"
+     *
+     *   2. HEADER "Chung"
+     *   3. GIAO DIỆN: subtitle = "Theo hệ thống"
+     *   4. BỘ NHỚ ĐỆM: subtitle = "Xoá bộ nhớ đệm"
+     *   5. GIỚI THIỆU: subtitle = version
+     *
+     * @param fragment SettingsFragment để lấy context + string resources
+     * @return Danh sách SettingsItem
      */
     public static List<SettingsItem> createDefaultItems(SettingsFragment fragment) {
         List<SettingsItem> items = new ArrayList<>();

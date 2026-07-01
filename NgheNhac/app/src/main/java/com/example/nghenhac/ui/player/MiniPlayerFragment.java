@@ -47,6 +47,7 @@ public class MiniPlayerFragment extends Fragment {
     // Player
     private MusicPlayer musicPlayer;
     private PlayerEventListener.OnEventListener eventListener;
+    private boolean isUiUpdating = false; // debounce flag cho updateVisibility
 
     @Nullable
     @Override
@@ -73,24 +74,25 @@ public class MiniPlayerFragment extends Fragment {
         // Setup click listeners
         setupClickListeners();
 
-        // Tạo listener cập nhật UI
+        // Tạo listener cập nhật UI — gộp các callback để tránh gọi setVisibility liên tục
         eventListener = new PlayerEventListener.OnEventListener() {
             @Override
             public void onMediaItemTransition(@Nullable MediaItem mediaItem, int reason) {
                 updateSongInfo();
-                updateVisibility();
+                updatePlayPauseIcon();
+                debounceUpdateVisibility();
             }
 
             @Override
             public void onIsPlayingChanged(boolean isPlaying) {
                 updatePlayPauseIcon();
-                updateVisibility();
+                debounceUpdateVisibility();
             }
 
             @Override
             public void onPlaybackStateChanged(int playbackState) {
                 updatePlayPauseIcon();
-                updateVisibility();
+                // KHÔNG gọi updateVisibility ở đây — tránh setVisibility(GONE) khi đang buffering
             }
         };
 
@@ -116,6 +118,7 @@ public class MiniPlayerFragment extends Fragment {
         super.onPause();
         // Huỷ listener để tránh memory leak
         musicPlayer.getEventListener().setListener(null);
+        isUiUpdating = false;
     }
 
     // ════════════════════════════════════════════
@@ -200,6 +203,23 @@ public class MiniPlayerFragment extends Fragment {
     private void updateVisibility() {
         boolean hasSong = musicPlayer.getCurrentMediaItem() != null
                 || !musicPlayer.getPlaybackQueue().isEmpty();
-        rootView.setVisibility(hasSong ? View.VISIBLE : View.GONE);
+        int newVisibility = hasSong ? View.VISIBLE : View.GONE;
+        // Chỉ set nếu thực sự thay đổi — tránh layout request vô ích
+        if (rootView.getVisibility() != newVisibility) {
+            rootView.setVisibility(newVisibility);
+        }
+    }
+
+    /**
+     * Debounced updateVisibility — tránh gọi setVisibility quá nhiều lần liên tiếp.
+     * Chỉ gọi khi thực sự cần (sau khi chuyển bài hoặc play/pause).
+     */
+    private void debounceUpdateVisibility() {
+        if (isUiUpdating) return;
+        isUiUpdating = true;
+        rootView.postDelayed(() -> {
+            isUiUpdating = false;
+            updateVisibility();
+        }, 100); // 100ms debounce
     }
 }

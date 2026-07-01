@@ -1,11 +1,10 @@
 package com.example.nghenhac.ui.library;
 
+import android.app.Activity;
 import android.content.Context;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AlertDialog;
-import androidx.lifecycle.LiveData;
 
 import com.example.nghenhac.data.local.entity.PlaylistEntity;
 import com.example.nghenhac.data.local.entity.SongEntity;
@@ -13,6 +12,8 @@ import com.example.nghenhac.data.repository.PlaylistRepository;
 import com.example.nghenhac.data.repository.SongRepository;
 
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Utility class cho thao tác với bài hát: thêm vào playlist, yêu thích.
@@ -44,7 +45,7 @@ public class SongBottomSheetDialog {
         final boolean[] isFavorite = {song.isFavorite()};
         String favoriteText = isFavorite[0] ? "Bỏ yêu thích" : "Yêu thích";
 
-        new AlertDialog.Builder(context)
+        new androidx.appcompat.app.AlertDialog.Builder(context)
                 .setTitle(song.getTitle())
                 .setItems(new String[]{
                         "Thêm vào playlist",
@@ -68,41 +69,60 @@ public class SongBottomSheetDialog {
      * Hiển thị dialog danh sách playlist để thêm bài hát.
      *
      * Nguyên lý:
-     * - Lấy danh sách playlist từ PlaylistRepository.
-     * - Hiển thị AlertDialog với danh sách tên playlist.
-     * - Click → gọi PlaylistRepository.addSongToPlaylist().
+     * - Chạy sync query trên background thread để tránh Room crash (Cannot access database on main thread).
+     * - Khi có dữ liệu, post lên UI thread để hiển thị AlertDialog.
+     * - Click → gọi PlaylistRepository.addSongToPlaylist() (repository tự quản lý executor riêng).
      *
      * Input:
      * @param context Context.
      * @param song    Bài hát cần thêm.
      */
     private static void showPlaylistPicker(@NonNull Context context, @NonNull SongEntity song) {
-        PlaylistRepository repository = PlaylistRepository.getInstance(context);
-        LiveData<List<PlaylistEntity>> playlistsLiveData = repository.getAllPlaylists();
-        List<PlaylistEntity> playlists = playlistsLiveData.getValue();
-
-        if (playlists == null || playlists.isEmpty()) {
-            Toast.makeText(context,
-                    "Chưa có playlist nào. Tạo playlist trước.",
-                    Toast.LENGTH_SHORT).show();
+        if (!(context instanceof Activity)) {
+            Toast.makeText(context, "Lỗi: không thể hiển thị dialog", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        String[] playlistNames = new String[playlists.size()];
-        for (int i = 0; i < playlists.size(); i++) {
-            playlistNames[i] = playlists.get(i).getName();
-        }
+        final Activity activity = (Activity) context;
+        final PlaylistRepository repository = PlaylistRepository.getInstance(context);
 
-        new AlertDialog.Builder(context)
-                .setTitle("Chọn playlist")
-                .setItems(playlistNames, (dialog, which) -> {
-                    PlaylistEntity selected = playlists.get(which);
-                    repository.addSongToPlaylist(selected.getId(), song.getId());
-                    Toast.makeText(context,
-                            "Đã thêm \"" + song.getTitle() + "\" vào \"" + selected.getName() + "\"",
-                            Toast.LENGTH_SHORT).show();
-                })
-                .setNegativeButton("Huỷ", null)
-                .show();
+        // Chạy sync query trên background thread — tránh Room main thread violation
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        executor.execute(() -> {
+            try {
+                final List<PlaylistEntity> playlists = repository.getAllPlaylistsSync();
+
+                activity.runOnUiThread(() -> {
+                    if (playlists == null || playlists.isEmpty()) {
+                        Toast.makeText(context,
+                                "Chưa có playlist nào. Tạo playlist trước.",
+                                Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    String[] playlistNames = new String[playlists.size()];
+                    for (int i = 0; i < playlists.size(); i++) {
+                        playlistNames[i] = playlists.get(i).getName();
+                    }
+
+                    new androidx.appcompat.app.AlertDialog.Builder(context)
+                            .setTitle("Chọn playlist")
+                            .setItems(playlistNames, (dialog, which) -> {
+                                if (which >= playlists.size()) {
+                                    return;
+                                }
+                                PlaylistEntity selected = playlists.get(which);
+                                repository.addSongToPlaylist(selected.getId(), song.getId());
+                                Toast.makeText(context,
+                                        "Đã thêm \"" + song.getTitle() + "\" vào \"" + selected.getName() + "\"",
+                                        Toast.LENGTH_SHORT).show();
+                            })
+                            .setNegativeButton("Huỷ", null)
+                            .show();
+                });
+            } finally {
+                executor.shutdown();
+            }
+        });
     }
 }

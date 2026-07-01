@@ -324,66 +324,82 @@ public class PlaylistDetailActivity extends AppCompatActivity {
      * Hiển thị dialog chọn bài hát từ thư viện để thêm vào playlist.
      *
      * Nguyên lý:
-     * - Load tất cả bài hát từ SongRepository.
+     * - Dùng Room LiveData observe() để load danh sách bài hát — đảm bảo dữ liệu được query đúng.
+     * - observeOnce pattern: sau khi nhận được dữ liệu lần đầu, tự removeObserver để chỉ chạy một lần.
      * - Hiển thị AlertDialog multi-choice với danh sách bài hát.
      * - User chọn → thêm các bài đã chọn vào playlist.
      *
      * Luồng xử lý:
-     * 1. Lấy danh sách bài hát hiện tại (LiveData).
-     * 2. Tạo mảng tên bài hát + mảng selected.
-     * 3. AlertDialog multi-choice → user chọn → click "Thêm".
-     * 4. executor.execute → repository.addSongsToPlaylist().
-     * 5. Snackbar thông báo số lượng bài đã thêm.
+     * 1. Gọi songRepo.getAllSongs() → observe với Observer dùng 1 lần.
+     * 2. Observer chạy khi Room load xong (luôn có dữ liệu, dù empty).
+     * 3. Nếu rỗng → Snackbar "Thư viện trống".
+     * 4. Nếu có dữ liệu → hiển thị AlertDialog multi-choice.
+     * 5. User chọn → click "Thêm" → executor.execute → repository.addSongsToPlaylist().
+     * 6. Snackbar thông báo số lượng bài đã thêm.
+     *
+     * Lưu ý:
+     * - Dùng `this` làm LifecycleOwner (Activity), an toàn vì dialog chỉ hiển thị khi activity active.
+     * - Observer tự remove sau lần callback đầu tiên để tránh gọi lại khi dữ liệu thay đổi.
      */
     private void showAddSongsDialog() {
-        SongRepository songRepo = SongRepository.getInstance(this);
-        List<SongEntity> allSongs = songRepo.getAllSongs().getValue();
+        final SongRepository songRepo = SongRepository.getInstance(this);
+        
+        // Dùng observeOnce: Room tự load data trên background thread rồi callback trên UI thread
+        final androidx.lifecycle.LiveData<List<SongEntity>> songsLiveData = songRepo.getAllSongs();
+        songsLiveData.observe(this, new androidx.lifecycle.Observer<List<SongEntity>>() {
+            @Override
+            public void onChanged(List<SongEntity> allSongs) {
+                // Chỉ chạy một lần — remove ngay sau khi nhận data
+                songsLiveData.removeObserver(this);
 
-        if (allSongs == null || allSongs.isEmpty()) {
-            Snackbar.make(findViewById(android.R.id.content),
-                    "Thư viện trống", Snackbar.LENGTH_SHORT).show();
-            return;
-        }
-
-        // Tạo mảng tên và selected state
-        String[] songNames = new String[allSongs.size()];
-        boolean[] selected = new boolean[allSongs.size()];
-        for (int i = 0; i < allSongs.size(); i++) {
-            SongEntity s = allSongs.get(i);
-            songNames[i] = s.getTitle() + " - " + s.getArtist();
-            selected[i] = false;
-        }
-
-        new androidx.appcompat.app.AlertDialog.Builder(this)
-                .setTitle("Thêm bài hát")
-                .setMultiChoiceItems(songNames, selected, (dialog, which, isChecked) -> {
-                    selected[which] = isChecked;
-                })
-                .setPositiveButton("Thêm (" + countSelected(selected) + ")", (dialog, which) -> {
-                    int selectedCount = countSelected(selected);
-                    if (selectedCount == 0) {
-                        Snackbar.make(findViewById(android.R.id.content),
-                                "Chưa chọn bài hát nào", Snackbar.LENGTH_SHORT).show();
-                        return;
-                    }
-
-                    // Thêm các bài đã chọn vào playlist
-                    executor.execute(() -> {
-                        List<Long> songIdsToAdd = new ArrayList<>();
-                        for (int i = 0; i < selected.length; i++) {
-                            if (selected[i]) {
-                                songIdsToAdd.add(allSongs.get(i).getId());
-                            }
-                        }
-                        repository.addSongsToPlaylist(playlistId, songIdsToAdd);
-                    });
-
+                if (allSongs == null || allSongs.isEmpty()) {
                     Snackbar.make(findViewById(android.R.id.content),
-                            "Đã thêm " + selectedCount + " bài hát vào playlist",
+                            "Thư viện trống",
                             Snackbar.LENGTH_SHORT).show();
-                })
-                .setNegativeButton("Huỷ", null)
-                .show();
+                    return;
+                }
+
+                int songCount = allSongs.size();
+                String[] songNames = new String[songCount];
+                boolean[] selected = new boolean[songCount];
+                for (int i = 0; i < songCount; i++) {
+                    SongEntity s = allSongs.get(i);
+                    songNames[i] = s.getTitle() + " - " + s.getArtist();
+                }
+
+                new androidx.appcompat.app.AlertDialog.Builder(PlaylistDetailActivity.this)
+                        .setTitle("Thêm bài hát")
+                        .setMultiChoiceItems(songNames, selected, (dialog, which, isChecked) -> {
+                            selected[which] = isChecked;
+                        })
+                        .setPositiveButton("Thêm", (dialog, which) -> {
+                            int selectedCount = countSelected(selected);
+                            if (selectedCount == 0) {
+                                Snackbar.make(findViewById(android.R.id.content),
+                                        "Chưa chọn bài hát nào", Snackbar.LENGTH_SHORT).show();
+                                return;
+                            }
+
+                            // Snackbar trước (optimistic), DB insert sau
+                            Snackbar.make(findViewById(android.R.id.content),
+                                    "Đã thêm " + selectedCount + " bài hát vào playlist",
+                                    Snackbar.LENGTH_SHORT).show();
+
+                            // Thêm các bài đã chọn vào playlist
+                            executor.execute(() -> {
+                                List<Long> songIdsToAdd = new ArrayList<>();
+                                for (int i = 0; i < songCount; i++) {
+                                    if (selected[i]) {
+                                        songIdsToAdd.add(allSongs.get(i).getId());
+                                    }
+                                }
+                                repository.addSongsToPlaylist(playlistId, songIdsToAdd);
+                            });
+                        })
+                        .setNegativeButton("Huỷ", null)
+                        .show();
+            }
+        });
     }
 
     /**

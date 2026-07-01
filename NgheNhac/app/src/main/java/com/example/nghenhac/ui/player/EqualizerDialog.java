@@ -19,20 +19,93 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Equalizer dialog — điều chỉnh âm thanh với presets, band sliders, bass boost.
+ * 🎛️ EqualizerDialog — Cân bằng âm thanh (Equalizer + Bass Boost).
  *
- * Nguyên lý:
- * - Sử dụng Android AudioEffect API (Equalizer + BassBoost).
- * - Cần audio session ID từ ExoPlayer để gán hiệu ứng.
- * - Presets: Normal, Classical, Dance, Flat, Folk, Heavy Metal, Hip Hop, Jazz, Pop, Rock.
- * - Lưu settings vào PreferencesManager (E2).
+ * ============================================================
+ *  GIẢI THÍCH CHI TIẾT — DÀNH CHO BÁO CÁO ĐỒ ÁN
+ * ============================================================
  *
- * Luồng xử lý:
- * 1. User mở Equalizer từ PlayerActivity menu.
- * 2. Khởi tạo Equalizer và BassBoost với audio session ID.
- * 3. Hiển thị danh sách preset + band sliders + bass boost toggle.
- * 4. User thay đổi → áp dụng ngay lập tức + lưu vào PreferencesManager.
- * 5. Dialog đóng → giải phóng AudioEffect objects.
+ * ─── 1. VAI TRÒ ───
+ * Cho phép người dùng tuỳ chỉnh âm thanh:
+ *   - Chọn PRESET có sẵn (Pop, Rock, Jazz, Classic,...)
+ *   - Chỉnh từng DẢI TẦN SỐ (bass, mid, treble)
+ *   - Bật/tắt TĂNG CƯỜNG BASS
+ *
+ * ─── 2. KIẾN THỨC NỀN: ÂM THANH LÀ GÌ? ───
+ *
+ *   Âm thanh = sóng dao động. Tần số càng cao → âm càng cao (the thé).
+ *   Tần số càng thấp → âm càng trầm (bass).
+ *
+ *   60 Hz ───── Bass (trầm) — tiếng trống, bass guitar
+ *   230 Hz ──── Low-mid — tiếng cello, piano trầm
+ *   910 Hz ──── Mid — giọng nói, guitar
+ *   3.6 kHz ─── High-mid — violin, harmonica
+ *   14 kHz ─── Treble (cao) — tiếng chũm choẹ, sáo
+ *
+ * ─── 3. CÔNG NGHỆ ───
+ *   Android AudioEffect API:
+ *     - Equalizer: điều chỉnh từng dải tần số
+ *     - BassBoost: tăng cường âm trầm (bass)
+ *   Cần audioSessionId từ ExoPlayer để gán hiệu ứng.
+ *
+ * ─── 4. LUỒNG CHI TIẾT ───
+ *
+ *   Bước 1: User mở Equalizer từ PlayerActivity
+ *           → EqualizerDialog.show(context)
+ *
+ *   Bước 2: Lấy MusicPlayer instance
+ *           → Kiểm tra ExoPlayer != null
+ *           → Lấy audioSessionId = exoPlayer.getAudioSessionId()
+ *
+ *   Bước 3: Tạo Equalizer và BassBoost
+ *           equalizer = new Equalizer(0, audioSessionId)
+ *           bassBoost = new BassBoost(0, audioSessionId)
+ *           equalizer.setEnabled(true)
+ *
+ *   Bước 4: Khôi phục settings từ PreferencesManager
+ *           → savedPreset (preset đã lưu lần trước)
+ *           → savedBassBoost (bass đã bật/tắt lần trước)
+ *
+ *   Bước 5: Xây dựng UI dialog:
+ *           ├── Preset selector (◀ Tên preset ▶)
+ *           ├── Band sliders (SeekBar cho từng tần số)
+ *           └── Bass Boost toggle (Switch)
+ *
+ *   Bước 6: User thay đổi → áp dụng NGAY LẬP TỨC
+ *           + Lưu vào PreferencesManager (giữ cho lần sau)
+ *
+ *   Bước 7: Dialog đóng → release() Equalizer + BassBoost
+ *           → Giải phóng tài nguyên audio
+ *
+ * ─── 5. SƠ ĐỒ ───
+ *
+ *   ┌──────────────┐     ┌──────────────────┐     ┌────────────────┐
+ *   │  ExoPlayer   │────→│  audioSessionId  │────→│  Equalizer     │
+ *   │  (phát nhạc) │     │  (mỗi bài 1 ID)  │     │  + BassBoost   │
+ *   └──────────────┘     └──────────────────┘     └───────┬────────┘
+ *                                                          │
+ *                                                          ▼
+ *                                            ┌────────────────────────┐
+ *                                            │  Giao diện Dialog:    │
+ *                                            │  - Preset selector    │
+ *                                            │  - 5 band SeekBars    │
+ *                                            │  - Bass toggle        │
+ *                                            └────────────────────────┘
+ *                                                          │
+ *                                                          ▼
+ *                                            ┌────────────────────────┐
+ *                                            │  Lưu vào              │
+ *                                            │  PreferencesManager   │
+ *                                            │  → giữ cho lần sau    │
+ *                                            └────────────────────────┘
+ *
+ * ─── 6. LƯU Ý ───
+ *   - KHÔNG phải thiết bị nào cũng hỗ trợ Equalizer
+ *     (thiết bị giá rẻ, Android tuỳ chỉnh)
+ *   - Try-catch để bắt lỗi "Thiết bị không hỗ trợ Equalizer"
+ *   - audioSessionId = 0 → ExoPlayer chưa phát → không thể tạo Equalizer
+ *   - Static fields: chỉ 1 Equalizer instance cho toàn app
+ *     → Tránh xung đột (2 dialog cùng lúc)
  */
 public class EqualizerDialog {
 
@@ -41,9 +114,16 @@ public class EqualizerDialog {
     private static boolean isEnabled = false;
 
     /**
-     * Hiển thị Equalizer dialog.
+     * ─── HIỂN THỊ EQUALIZER DIALOG ───
      *
-     * @param context Context.
+     * LUỒNG:
+     *   1. Lấy MusicPlayer instance
+     *   2. Kiểm tra ExoPlayer != null (chưa phát → không có audio session)
+     *   3. Lấy audioSessionId = exoPlayer.getAudioSessionId()
+     *   4. Nếu audioSessionId == 0 → báo lỗi "chưa sẵn sàng"
+     *   5. Gọi showDialog(context, audioSessionId)
+     *
+     * @param context Context (Activity/Context)
      */
     public static void show(Context context) {
         MusicPlayer musicPlayer = MusicPlayer.getInstance(context);
@@ -70,7 +150,28 @@ public class EqualizerDialog {
     }
 
     /**
-     * Tạo và hiển thị dialog Equalizer.
+     * ─── TẠO VÀ HIỂN THỊ EQUALIZER DIALOG ───
+     *
+     * LUỒNG:
+     *   1. Giải phóng Equalizer cũ (nếu có) → tránh xung đột
+     *   2. Tạo Equalizer + BassBoost với audioSessionId
+     *   3. Bật equalizer.setEnabled(true)
+     *   4. Khôi phục settings từ PreferencesManager
+     *      → savedPreset: preset lần trước user chọn
+     *      → savedBassBoost: bass bật/tắt lần trước
+     *   5. Xây dựng UI:
+     *      - Preset: LinearLayout với 2 nút ◀ ▶ + TextView
+     *      - Bands: vòng lặp for các tần số, mỗi tần số 1 SeekBar
+     *      - Bass: Switch
+     *   6. Gắn sự kiện:
+     *      - SeekBar change → equalizer.setBandLevel() + lưu
+     *      - Bass Switch → bassBoost.setStrength() + lưu
+     *      - Nút Đặt lại → resetToDefault() + clear preferences
+     *      - Nút Đóng / Dismiss → release() giải phóng
+     *
+     * @param context        Context
+     * @param audioSessionId ID của audio session từ ExoPlayer
+     * @throws Exception Nếu thiết bị không hỗ trợ Equalizer
      */
     private static void showDialog(Context context, int audioSessionId) throws Exception {
         // Giải phóng instance cũ nếu có
@@ -258,7 +359,12 @@ public class EqualizerDialog {
     }
 
     /**
-     * Lưu band levels vào PreferencesManager.
+     * ─── LƯU BAND LEVELS ───
+     *
+     * Lưu mức gain của từng dải tần số vào PreferencesManager.
+     * Lần sau mở Equalizer → khôi phục lại.
+     *
+     * @param prefs PreferencesManager instance
      */
     private static void saveBandLevels(PreferencesManager prefs) {
         if (equalizer == null) return;
@@ -271,7 +377,13 @@ public class EqualizerDialog {
     }
 
     /**
-     * Cập nhật Seekbars theo preset hiện tại.
+     * ─── CẬP NHẬT SEEK BARS THEO PRESET ───
+     *
+     * Khi user chọn preset mới, các SeekBar cần được cập nhật
+     * để hiển thị mức gain tương ứng.
+     *
+     * TODO: Tìm các SeekBar trong dialog và cập nhật progress.
+     * Hiện tại bỏ qua vì dialog đang hiển thị.
      */
     private static void updateBandSeekbars() {
         // Trong thực tế, cần cập nhật UI từ đây
@@ -279,7 +391,10 @@ public class EqualizerDialog {
     }
 
     /**
-     * Đặt lại equalizer về mặc định (flat).
+     * ─── ĐẶT LẠI EQUALIZER ───
+     *
+     * Đưa equalizer về preset đầu tiên (thường là Normal/Flat).
+     * Tắt Bass Boost.
      */
     private static void resetToDefault() {
         try {
@@ -293,7 +408,18 @@ public class EqualizerDialog {
     }
 
     /**
-     * Giải phóng AudioEffect objects.
+     * ─── GIẢI PHÓNG AUDIO EFFECT ───
+     *
+     * LUỒNG:
+     *   1. equalizer.setEnabled(false) → tắt hiệu ứng
+     *   2. equalizer.release() → giải phóng tài nguyên native
+     *   3. equalizer = null → cho GC dọn dẹp
+     *   4. Tương tự với BassBoost
+     *
+     * QUAN TRỌNG:
+     *   - Phải gọi release() khi dialog đóng
+     *   - Nếu không, equalizer vẫn chạy ngầm → tốn pin
+     *   - Nếu không, lần mở sau không tạo được equalizer mới
      */
     private static void release() {
         try {
@@ -312,7 +438,15 @@ public class EqualizerDialog {
     }
 
     /**
-     * Định dạng gain value (millibels → dB).
+     * ─── ĐỊNH DẠNG GAIN ───
+     *
+     * Chuyển từ millibels (đơn vị của AudioEffect API) sang dB.
+     *   - 0 millibels = 0.0 dB (không thay đổi)
+     *   - 500 millibels = 5.0 dB (tăng)
+     *   - -500 millibels = -5.0 dB (giảm)
+     *
+     * @param millibels Giá trị gain từ AudioEffect API (1/100 dB)
+     * @return Chuỗi hiển thị: "+5.0 dB", "-2.0 dB", "0.0 dB"
      */
     private static String formatGain(short millibels) {
         float dB = millibels / 100.0f;

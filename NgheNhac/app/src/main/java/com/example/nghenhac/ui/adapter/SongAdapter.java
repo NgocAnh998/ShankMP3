@@ -319,19 +319,28 @@ public class SongAdapter extends ListAdapter<SongEntity, SongAdapter.SongViewHol
     // ════════════════════════════════════════════
 
     /**
-     * Định dạng thời lượng từ milliseconds sang mm:ss.
+     * Định dạng thời lượng từ milliseconds sang mm:ss hoặc h:mm:ss.
+     *
+     * Nguyên lý:
+     * - Hỗ trợ bài hát dài > 1 tiếng: hiển thị "1:23:45" thay vì "83:45".
+     * - ms <= 0: hiển thị "--:--" (chưa có thông tin thời lượng).
      *
      * Input:
      * @param ms Thời lượng (milliseconds).
      *
      * Output:
-     * @return Chuỗi định dạng mm:ss, hoặc "--:--" nếu ms <= 0.
+     * @return Chuỗi định dạng h:mm:ss, mm:ss, hoặc "--:--".
      */
     public static String formatDuration(long ms) {
         if (ms <= 0) return "--:--";
-        long seconds = ms / 1000;
-        long minutes = seconds / 60;
-        seconds = seconds % 60;
-        return String.format(Locale.getDefault(), "%d:%02d", minutes, seconds);
+        long totalSeconds = ms / 1000;
+        long hours = totalSeconds / 3600;
+        long minutes = (totalSeconds % 3600) / 60;
+        long seconds = totalSeconds % 60;
+        if (hours > 0) {
+            return String.format(Locale.getDefault(), "%d:%02d:%02d", hours, minutes, seconds);
+        } else {
+            return String.format(Locale.getDefault(), "%d:%02d", minutes, seconds);
+        }
     }
 }

@@ -40,19 +40,99 @@ import retrofit2.Call;
 import retrofit2.Response;
 
 /**
- * Fragment tìm kiếm bài hát, nghệ sĩ, album.
+ * 🔍 SearchFragment — Tìm kiếm bài hát (local + online) với debounce.
  *
- * Nguyên lý:
- * - TextInputEditText với debounce 300ms để tránh gọi search quá nhiều.
- * - Kết quả hiển thị qua RecyclerView + SongAdapter.
- * - Empty state khi không có kết quả.
- * - Observe SongRepository.search(query) LiveData để cập nhật kết quả realtime.
+ * ============================================================
+ *  GIẢI THÍCH CHI TIẾT — DÀNH CHO BÁO CÁO ĐỒ ÁN
+ * ============================================================
  *
- * Luồng xử lý:
- * 1. User nhập text → TextWatcher.onTextChanged() → postDelayed 300ms.
- * 2. Hết debounce → performSearch() → gọi songRepository.search(query).
- * 3. LiveData trả về → observe → adapter.submitList() hoặc empty state.
- * 4. User click kết quả → mở PlayerActivity tương tự SongListFragment.
+ * ─── 1. VAI TRÒ ───
+ * Cho phép người dùng tìm kiếm bài hát NHANH CHÓNG từ:
+ *   - 🏠 LOCAL: nhạc trong máy (Room database)
+ *   - ☁️ ONLINE: nhạc từ server (Retrofit API)
+ *
+ * ─── 2. KIẾN TRÚC ───
+ *
+ *   ┌─────────────────────────────────────────────────────────┐
+ *   │                    SearchFragment                       │
+ *   │                                                         │
+ *   │  TextInputEditText (ô nhập)                             │
+ *   │       │                                                 │
+ *   │       ├── TextWatcher → Debounce 300ms                 │
+ *   │       ├── setOnEditorActionListener (nút Search)       │
+ *   │       │                                                 │
+ *   │       ▼                                                 │
+ *   │  performSearch(query)                                   │
+ *   │       │                                                 │
+ *   │       ├── Query rỗng? → Clear + Ẩn empty state         │
+ *   │       └── Query có nội dung →                          │
+ *   │             │                                           │
+ *   │             ├── 1. TÌM LOCAL (Room)                    │
+ *   │             │    songRepository.search(query)           │
+ *   │             │    → LiveData → observe → adapter        │
+ *   │             │                                           │
+ *   │             └── 2. TÌM ONLINE (Retrofit)               │
+ *   │                  apiService.searchSongs(query)          │
+ *   │                  → Executor (BG thread)                │
+ *   │                  → Map SongDto → SongEntity            │
+ *   │                  → Merge + adapter.submitList()        │
+ *   │                                                         │
+ *   │  RecyclerView (kết quả)                                 │
+ *   │       │                                                 │
+ *   │       ├── Click → MusicPlayer.play(song)               │
+ *   │       ├── More → SongBottomSheetDialog                 │
+ *   │       └── Favorite → SongRepository.updateFavorite()   │
+ *   │                                                         │
+ *   │  Empty State (khi không có kết quả)                     │
+ *   │  Online Loading (ProgressBar khi chờ API)              │
+ *   └─────────────────────────────────────────────────────────┘
+ *
+ * ─── 3. DEBOUNCE 300MS (QUAN TRỌNG) ───
+ *
+ *   User gõ "jazz" trong 0.5 giây → gõ 4 ký tự
+ *       │
+ *       ├── KHÔNG debounce: search 4 lần (lãng phí)
+ *       │   "j" → search "j"
+ *       │   "ja" → search "ja"
+ *       │   "jaz" → search "jaz"
+ *       │   "jazz" → search "jazz"
+ *       │
+ *       └── CÓ debounce 300ms: CHỈ search 1 lần
+ *           Gõ "j" → đặt timer 300ms
+ *           Gõ "ja" → reset timer 300ms
+ *           Gõ "jaz" → reset timer 300ms
+ *           Gõ "jazz" → reset timer 300ms
+ *           Hết 300ms không gõ → performSearch("jazz") ✅
+ *
+ *   GIỐNG NHƯ: Gõ cửa. Gõ liên tục? Người trong nhà đợi
+ *   bạn dừng 0.3s mới ra mở.
+ *
+ * ─── 4. LUỒNG CHI TIẾT ───
+ *
+ *   Bước 1: Fragment khởi tạo → onViewCreated()
+ *   Bước 2: Setup RecyclerView + SongAdapter
+ *   Bước 3: Gắn TextWatcher vào ô tìm kiếm
+ *   Bước 4: User gõ "jazz" → TextWatcher.onTextChanged()
+ *   Bước 5: Debounce 300ms → performSearch("jazz")
+ *   Bước 6: Song song:
+ *           - LOCAL: songRepository.search("jazz") → LiveData
+ *             → observe → adapter.submitList(localResults)
+ *           - ONLINE: searchOnline("jazz", localResults)
+ *             → Executor → Retrofit → Server
+ *             → Map DTO → Entity → Merge → adapter.submitList()
+ *   Bước 7: User click kết quả → MusicPlayer.play()
+ *   Bước 8: ActivityOptions shared element → PlayerActivity
+ *
+ * ─── 5. XỬ LÝ LỖI ───
+ *   - ConnectException: Server không chạy → Snackbar báo
+ *   - UnknownHostException: Mất Internet → Snackbar báo
+ *   - Exception khác: Fallback message → Snackbar
+ *   - Fragment detached: runOnUiThreadSafe() → tránh crash
+ *
+ * ─── 6. THREAD SAFETY ───
+ *   - Online search chạy trên BACKGROUND thread (ExecutorService)
+ *   - Cập nhật UI qua runOnUiThreadSafe() (kiểm tra isAdded())
+ *   - Dùng bản sao List<SongEntity> để tránh concurrent modification
  */
 public class SearchFragment extends Fragment {
 
@@ -143,29 +223,35 @@ public class SearchFragment extends Fragment {
     }
 
     /**
-     * Thực hiện tìm kiếm và cập nhật kết quả.
+     * ─── THỰC HIỆN TÌM KIẾM ───
      *
-     * Nguyên lý:
-     * - Query rỗng → clear adapter, ẩn empty state.
-     * - Query có nội dung → observe SongRepository.search() LiveData.
-     * - Xoá observer cũ trước khi tạo mới để tránh memory leak.
-     * - LiveData tự động notify adapter khi có kết quả.
+     * Đây là phương thức CHÍNH. Được gọi SAU KHI debounce 300ms kết thúc.
      *
-     * Input:
-     * @param query Từ khoá tìm kiếm (đã trim).
-     */
-    /**
-     * Thực hiện tìm kiếm kết hợp local + online.
+     * LUỒNG CHI TIẾT:
      *
-     * Nguyên lý:
-     * - Query rỗng → clear adapter, ẩn empty state.
-     * - Tìm local trước qua SongRepository.search() LiveData.
-     * - Song song tìm online qua MusicApiService.searchSongs().
-     * - Kết quả local + online được merge và hiển thị cùng nhau.
-     * - Online search chạy trên background thread (ExecutorService).
+     *  Bước 1: Kiểm tra query có rỗng không?
+     *          - Rỗng → clear adapter, ẩn empty state, bỏ qua
+     *          - Có nội dung → tiếp tục
      *
-     * Input:
-     * @param query Từ khoá tìm kiếm (đã trim).
+     *  Bước 2: Xoá observer cũ (nếu có)
+     *          → Tránh memory leak: LiveData giữ reference đến Fragment
+     *
+     *  Bước 3: Hiển thị loading indicator (ProgressBar)
+     *          → User biết đang chờ kết quả online
+     *
+     *  Bước 4: Gọi LOCAL search → SongRepository.search(query)
+     *          → Trả về LiveData (reactive)
+     *          → observe: khi có kết quả, hiển thị ngay
+     *
+     *  Bước 5: Trong callback của local, gọi ONLINE search
+     *          → searchOnline(queryCopy, localResults)
+     *          → Chạy trên BACKGROUND thread (ExecutorService)
+     *          → Không block UI
+     *
+     *  Bước 6: Kết quả online → merge vào local → adapter.submitList()
+     *          → Cập nhật UI trên MAIN thread qua runOnUiThreadSafe()
+     *
+     * @param query Từ khoá tìm kiếm (đã trim khoảng trắng)
      */
     private void performSearch(String query) {
         this.currentQuery = query;
@@ -193,23 +279,26 @@ public class SearchFragment extends Fragment {
             onlineLoadingIndicator.setVisibility(View.VISIBLE);
         }
 
+        // Tạo bản sao query để tránh race condition
+        final String queryCopy = query;
+
         // Tìm kiếm local
-        currentSearchLiveData = songRepository.search(query);
+        currentSearchLiveData = songRepository.search(queryCopy);
         currentSearchLiveData.observe(getViewLifecycleOwner(), localSongs -> {
-            // Luôn gọi online search song song, dù local có kết quả hay không
-            final List<SongEntity> allResults = new ArrayList<>();
+            // Tạo bản sao list để tránh concurrent modification với online search
+            final List<SongEntity> localResults = new ArrayList<>();
             if (localSongs != null) {
-                allResults.addAll(localSongs);
+                localResults.addAll(localSongs);
             }
 
-            // Hiển thị local results trước, rồi mới append online
-            if (!allResults.isEmpty()) {
-                adapter.submitList(new ArrayList<>(allResults));
+            // Hiển thị local results trước
+            if (!localResults.isEmpty()) {
+                adapter.submitList(new ArrayList<>(localResults));
                 emptyState.setVisibility(View.GONE);
             }
 
-            // Gọi online search bất kể local có kết quả hay không
-            searchOnline(query, allResults);
+            // Gọi online search với bản sao local results (không dùng chung tham chiếu)
+            searchOnline(queryCopy, localResults);
         });
     }
 
@@ -220,12 +309,13 @@ public class SearchFragment extends Fragment {
      * - Gọi API searchSongs(query) trên background thread.
      * - Map kết quả SongDto → SongEntity.
      * - Merge vào danh sách kết quả và cập nhật adapter.
+     * - Dùng bản sao localResults để tránh concurrent modification.
      *
      * Input:
-     * @param query      Từ khoá tìm kiếm.
-     * @param allResults Danh sách kết quả đã có (local) để merge thêm.
+     * @param query       Từ khoá tìm kiếm.
+     * @param localResults Danh sách kết quả local (bản sao, an toàn để thêm online).
      */
-    private void searchOnline(String query, List<SongEntity> allResults) {
+    private void searchOnline(String query, List<SongEntity> localResults) {
         executor.execute(() -> {
             try {
                 Call<List<SongDto>> call = apiService.searchSongs(query);
@@ -241,6 +331,8 @@ public class SearchFragment extends Fragment {
                 if (response.isSuccessful() && response.body() != null) {
                     List<SongDto> onlineSongs = response.body();
                     if (!onlineSongs.isEmpty()) {
+                        // Tạo kết quả tổng hợp: local + online (trên thread này, ko dùng chung với main)
+                        final List<SongEntity> mergedResults = new ArrayList<>(localResults);
                         for (SongDto dto : onlineSongs) {
                             SongEntity entity = new SongEntity(
                                     dto.getTitle() != null ? dto.getTitle() : "Không rõ",
@@ -252,18 +344,19 @@ public class SearchFragment extends Fragment {
                                     null,                         // mediaStoreId (online)
                                     System.currentTimeMillis()
                             );
-                            allResults.add(entity);
+                            mergedResults.add(entity);
                         }
-                        // Cập nhật UI trên main thread
+                        // Cập nhật UI trên main thread — submit bản sao mới
+                        final List<SongEntity> finalResults = new ArrayList<>(mergedResults);
                         runOnUiThreadSafe(() -> {
-                            adapter.submitList(new ArrayList<>(allResults));
+                            adapter.submitList(finalResults);
                             emptyState.setVisibility(View.GONE);
                         });
                     }
                 } else {
                     // Server trả về lỗi (VD: 404, 500)
                     runOnUiThreadSafe(() -> {
-                        if (allResults.isEmpty()) {
+                        if (localResults.isEmpty()) {
                             com.google.android.material.snackbar.Snackbar.make(
                                     searchInput,
                                     "Không thể kết nối server: " + response.code(),
@@ -278,7 +371,7 @@ public class SearchFragment extends Fragment {
                     if (onlineLoadingIndicator != null) {
                         onlineLoadingIndicator.setVisibility(View.GONE);
                     }
-                    if (allResults.isEmpty()) {
+                    if (localResults.isEmpty()) {
                         adapter.submitList(null);
                         emptyState.setVisibility(View.VISIBLE);
                         com.google.android.material.snackbar.Snackbar.make(
@@ -293,7 +386,7 @@ public class SearchFragment extends Fragment {
                     if (onlineLoadingIndicator != null) {
                         onlineLoadingIndicator.setVisibility(View.GONE);
                     }
-                    if (allResults.isEmpty()) {
+                    if (localResults.isEmpty()) {
                         adapter.submitList(null);
                         emptyState.setVisibility(View.VISIBLE);
                         com.google.android.material.snackbar.Snackbar.make(
@@ -302,12 +395,13 @@ public class SearchFragment extends Fragment {
                                 com.google.android.material.snackbar.Snackbar.LENGTH_SHORT
                         ).show();
                     }
-                });                } catch (Exception e) {
+                });
+            } catch (Exception e) {
                 runOnUiThreadSafe(() -> {
                     if (onlineLoadingIndicator != null) {
                         onlineLoadingIndicator.setVisibility(View.GONE);
                     }
-                    if (allResults.isEmpty()) {
+                    if (localResults.isEmpty()) {
                         adapter.submitList(null);
                         emptyState.setVisibility(View.VISIBLE);
                         String errMsg = e.getMessage();

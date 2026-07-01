@@ -72,6 +72,16 @@ public class PlaylistRepository {
         return playlistDao.getAllPlaylists();
     }
 
+    /**
+     * Lấy tất cả playlist (phiên bản đồng bộ).
+     *
+     * Dùng khi cần dữ liệu ngay lập tức (VD: picker dialog thêm bài vào playlist).
+     * Gọi từ background thread để tránh block UI.
+     */
+    public List<PlaylistEntity> getAllPlaylistsSync() {
+        return playlistDao.getAllPlaylistsSync();
+    }
+
     /** Lấy chi tiết playlist theo ID. */
     public LiveData<PlaylistEntity> getPlaylistById(long id) {
         return playlistDao.getPlaylistById(id);
@@ -184,8 +194,9 @@ public class PlaylistRepository {
      * Thêm nhiều bài hát vào playlist cùng lúc.
      *
      * Nguyên lý:
-     * - Duyệt danh sách songIds, tạo CrossRef với orderIndex tăng dần.
-     * - Mỗi bài insert riêng lẻ với IGNORE strategy.
+     * - Tạo một List<PlaylistSongCrossRef> rồi dùng DAO bulk insert.
+     * - Bulk insert nhanh hơn insert từng cái vì chỉ một giao dịch SQL.
+     * - IGNORE strategy: bỏ qua bài hát đã có trong playlist mà không báo lỗi.
      * - Cập nhật songCount một lần sau khi hoàn thành.
      *
      * Input:
@@ -195,11 +206,12 @@ public class PlaylistRepository {
     public void addSongsToPlaylist(long playlistId, @NonNull List<Long> songIds) {
         executor.execute(() -> {
             try {
+                List<PlaylistSongCrossRef> crossRefs = new java.util.ArrayList<>();
                 for (int i = 0; i < songIds.size(); i++) {
-                    PlaylistSongCrossRef crossRef = new PlaylistSongCrossRef(
-                            playlistId, songIds.get(i), i);
-                    playlistDao.addSongToPlaylist(crossRef);
+                    crossRefs.add(new PlaylistSongCrossRef(
+                            playlistId, songIds.get(i), i));
                 }
+                playlistDao.addSongsToPlaylist(crossRefs); // bulk insert!
                 playlistDao.updateSongCount(playlistId);
             } catch (Exception e) {
                 // Bỏ qua lỗi (IGNORE strategy đã xử lý conflict)

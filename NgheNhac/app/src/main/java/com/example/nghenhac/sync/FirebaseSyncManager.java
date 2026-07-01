@@ -368,12 +368,17 @@ public class FirebaseSyncManager {
      * - Nếu chưa có giá trị, trả về danh sách rỗng thay vì spin-wait.
      * - Caller nên gọi từ background thread sau khi dữ liệu đã được load.
      *
-     * Output: Danh sách playlist local (có thể rỗng).
+     * Output: Danh sách playlist local (không null, có thể rỗng).
      */
     @NonNull
     private List<PlaylistEntity> getLocalPlaylistsSync() {
-        List<PlaylistEntity> playlists = playlistRepository.getAllPlaylists().getValue();
-        return playlists != null ? playlists : new ArrayList<>();
+        try {
+            List<PlaylistEntity> playlists = playlistRepository.getAllPlaylists().getValue();
+            return playlists != null ? playlists : new ArrayList<>();
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to get local playlists", e);
+            return new ArrayList<>();
+        }
     }
 
     /**
@@ -381,8 +386,13 @@ public class FirebaseSyncManager {
      */
     @NonNull
     private List<SongEntity> getSongsInPlaylistSync(long playlistId) {
-        List<SongEntity> songs = playlistRepository.getSongsInPlaylist(playlistId).getValue();
-        return songs != null ? songs : new ArrayList<>();
+        try {
+            List<SongEntity> songs = playlistRepository.getSongsInPlaylist(playlistId).getValue();
+            return songs != null ? songs : new ArrayList<>();
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to get songs for playlist " + playlistId, e);
+            return new ArrayList<>();
+        }
     }
 
     /**
@@ -390,8 +400,13 @@ public class FirebaseSyncManager {
      */
     @NonNull
     private List<SongEntity> getLocalFavoritesSync() {
-        List<SongEntity> favorites = songRepository.getFavorites().getValue();
-        return favorites != null ? favorites : new ArrayList<>();
+        try {
+            List<SongEntity> favorites = songRepository.getFavorites().getValue();
+            return favorites != null ? favorites : new ArrayList<>();
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to get local favorites", e);
+            return new ArrayList<>();
+        }
     }
 
     /**
@@ -399,8 +414,13 @@ public class FirebaseSyncManager {
      */
     @NonNull
     private List<SongEntity> getLocalAllSongsSync() {
-        List<SongEntity> songs = songRepository.getAllSongs().getValue();
-        return songs != null ? songs : new ArrayList<>();
+        try {
+            List<SongEntity> songs = songRepository.getAllSongs().getValue();
+            return songs != null ? songs : new ArrayList<>();
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to get all local songs", e);
+            return new ArrayList<>();
+        }
     }
 
     /**

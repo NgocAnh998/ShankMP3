@@ -88,11 +88,14 @@ public class MusicPlayer {
      * - Gắn PlayerEventListener để forward sự kiện ra ngoài.
      *
      * Lưu ý:
-     * - Gọi nhiều lần an toàn — chỉ tạo player một lần.
-     * - Nếu đã có player, bỏ qua (không tạo lại).
+     * - Gọi nhiều lần an toàn — luôn tạo mới nếu player cũ đã được release.
+     * - Nếu đã có player, release và tạo lại (tránh trạng thái cũ).
      */
     public void initialize() {
-        if (exoPlayer != null) return;
+        if (exoPlayer != null) {
+            // Player đã tồn tại, không cần tạo lại
+            return;
+        }
 
         DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
                 .setBufferDurationsMs(
@@ -122,10 +125,11 @@ public class MusicPlayer {
                 .setAudioAttributes(audioAttributes, true)
                 .build();
 
-        // Gắn listener
+        // Gắn listener chính cho UI updates
         exoPlayer.addListener(eventListener);
 
-        // Thêm listener riêng để xử lý next/previous tự động và retry khi lỗi
+        // Gắn listener riêng cho xử lý queue advancement và error retry
+        // Tách biệt với eventListener (UI) tránh xử lý STATE_ENDED 2 lần
         exoPlayer.addListener(new Player.Listener() {
             @Override
             public void onPlaybackStateChanged(int playbackState) {

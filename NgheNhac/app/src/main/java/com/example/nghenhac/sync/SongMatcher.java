@@ -5,6 +5,7 @@ import androidx.annotation.Nullable;
 
 import com.example.nghenhac.data.local.entity.SongEntity;
 
+import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -220,19 +221,21 @@ public class SongMatcher {
     // ════════════════════════════════════════════
 
     /**
-     * Chuẩn hoá string để so sánh.
+     * Chuẩn hoá string để so sánh (hỗ trợ tiếng Việt).
      *
      * Nguyên lý:
      * - Trim khoảng trắng.
      * - Chuyển về lowerCase.
      * - Thay thế nhiều khoảng trắng bằng một.
-     * - Xoá ký tự đặc biệt (dấu câu) ngoại trừ chữ cái, số, khoảng trắng.
+     * - Dùng Normalizer (NFD) để tách dấu khỏi chữ cái, sau đó xoá dấu (\\p{M}).
+     *   Cách này giữ nguyên chữ cái gốc, CHỈ xoá dấu (ê → e, à → a, đ → đ).
+     * - Xoá ký tự đặc biệt (dấu câu) nhưng GIỮ chữ cái tiếng Việt.
      *
      * Input:
      * @param input String cần chuẩn hoá.
      *
      * Output:
-     * @return String đã chuẩn hoá (không null).
+     * @return String đã chuẩn hoá, bỏ dấu nhưng giữ chữ (không null).
      */
     @NonNull
     String normalize(@Nullable String input) {
@@ -240,8 +243,10 @@ public class SongMatcher {
         String normalized = input.trim().toLowerCase();
         // Thay thế nhiều khoảng trắng bằng một
         normalized = normalized.replaceAll("\\s+", " ");
-        // Xoá ký tự đặc biệt
-        normalized = normalized.replaceAll("[^a-z0-9\\s]", "");
+        // Tách dấu và xoá dấu, giữ chữ cái gốc
+        normalized = Normalizer.normalize(normalized, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")      // xoá dấu (combining marks)
+                .replaceAll("[^a-zA-Z0-9\\s]", ""); // xoá ký tự đặc biệt (giữ a-z, A-Z, 0-9, space)
         return normalized.trim();
     }
 
