@@ -64,6 +64,9 @@ public class FirebaseSyncManager {
     private final SongMatcher songMatcher;
     private final SongRepository songRepository;
     private final PlaylistRepository playlistRepository;
+    private final com.example.nghenhac.data.local.dao.SongDao songDao;
+    private final com.example.nghenhac.data.local.dao.PlaylistDao playlistDao;
+    private final java.util.concurrent.ExecutorService dbExecutor;
 
     // ── Singleton ──
 
@@ -73,6 +76,11 @@ public class FirebaseSyncManager {
         this.songMatcher = new SongMatcher();
         this.songRepository = SongRepository.getInstance(context);
         this.playlistRepository = PlaylistRepository.getInstance(context);
+        com.example.nghenhac.data.local.AppDatabase db =
+                com.example.nghenhac.data.local.AppDatabase.getInstance(context);
+        this.songDao = db.songDao();
+        this.playlistDao = db.playlistDao();
+        this.dbExecutor = java.util.concurrent.Executors.newSingleThreadExecutor();
     }
 
     public static FirebaseSyncManager getInstance(@NonNull Context context) {
@@ -219,82 +227,98 @@ public class FirebaseSyncManager {
         userRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                try {
-                    if (!snapshot.exists()) {
-                        result.setSuccess(true);
-                        latch.countDown();
-                        return;
-                    }
+                dbExecutor.execute(() -> {
+                    try {
+                        if (!snapshot.exists()) {
+                            result.setSuccess(true);
+                            latch.countDown();
+                            return;
+                        }
 
-                    // Lấy danh sách bài hát local để matching
-                    List<SongEntity> localSongs = getLocalAllSongsSync();
+                        // Lấy danh sách bài hát local để matching
+                        List<SongEntity> localSongs = getLocalAllSongsSync();
 
-                    // Parse playlists
-                    DataSnapshot playlistsSnapshot = snapshot.child("playlists");
-                    int playlistsProcessed = 0;
-                    for (DataSnapshot playlistSnap : playlistsSnapshot.getChildren()) {
-                        String firebasePlaylistId = playlistSnap.getKey();
-                        String name = playlistSnap.child("name").getValue(String.class);
-                        String description = playlistSnap.child("description").getValue(String.class);
+                        // Parse playlists
+                        DataSnapshot playlistsSnapshot = snapshot.child("playlists");
+                        int playlistsProcessed = 0;
+                        for (DataSnapshot playlistSnap : playlistsSnapshot.getChildren()) {
+                            String firebasePlaylistId = playlistSnap.getKey();
+                            String name = playlistSnap.child("name").getValue(String.class);
+                            String description = playlistSnap.child("description").getValue(String.class);
 
-                        if (name != null && !name.isEmpty()) {
-                            // Create playlist locally
-                            long localPlaylistId = playlistRepository.createPlaylistSync(name, description);
+                            if (name != null && !name.isEmpty()) {
+                                // Kiểm tra playlist cùng tên đã tồn tại chưa để tránh trùng lặp
+                                com.example.nghenhac.data.local.entity.PlaylistEntity existing = playlistDao.findByNameSync(name);
+                                long localPlaylistId;
+                                if (existing != null) {
+                                    localPlaylistId = existing.getId();
+                                } else {
+                                    localPlaylistId = playlistRepository.createPlaylistSync(name, description);
+                                }
 
-                            // Parse songs
-                            DataSnapshot songsSnapshot = playlistSnap.child("songs");
-                            List<Long> matchedSongIds = new ArrayList<>();
+                                // Parse songs
+                                DataSnapshot songsSnapshot = playlistSnap.child("songs");
+                                List<Long> matchedSongIds = new ArrayList<>();
 
-                            for (DataSnapshot songSnap : songsSnapshot.getChildren()) {
-                                String title = songSnap.child("title").getValue(String.class);
-                                String artist = songSnap.child("artist").getValue(String.class);
-                                String album = songSnap.child("album").getValue(String.class);
-                                Long order = songSnap.child("order").getValue(Long.class);
+                                for (DataSnapshot songSnap : songsSnapshot.getChildren()) {
+                                    String title = songSnap.child("title").getValue(String.class);
+                                    String artist = songSnap.child("artist").getValue(String.class);
+                                    String album = songSnap.child("album").getValue(String.class);
+                                    Long order = songSnap.child("order").getValue(Long.class);
 
-                                if (title != null && artist != null) {
-                                    SongEntity firebaseSong = createTempSong(title, artist, album);
-                                    SongMatcher.MatchResult matchResult = songMatcher.findMatch(firebaseSong, localSongs);
+                                    if (title != null && artist != null) {
+                                        SongEntity firebaseSong = createTempSong(title, artist, album);
+                                        SongMatcher.MatchResult matchResult = songMatcher.findMatch(firebaseSong, localSongs);
 
-                                    if (matchResult.isMatched() && matchResult.getLocalSong() != null) {
-                                        matchedSongIds.add(matchResult.getLocalSong().getId());
+                                        if (matchResult.isMatched() && matchResult.getLocalSong() != null) {
+                                            matchedSongIds.add(matchResult.getLocalSong().getId());
+                                        }
                                     }
                                 }
-                            }
 
-                            // Add matched songs to playlist
-                            if (!matchedSongIds.isEmpty()) {
-                                playlistRepository.addSongsToPlaylist(localPlaylistId, matchedSongIds);
-                            }
-                            playlistsProcessed++;
-                        }
-                    }
-                    result.setPlaylistsDownloaded(playlistsProcessed);
-
-                    // Parse favorites
-                    DataSnapshot favoritesSnapshot = snapshot.child("favorites");
-                    int favoritesProcessed = 0;
-                    for (DataSnapshot favSnap : favoritesSnapshot.getChildren()) {
-                        String title = favSnap.child("title").getValue(String.class);
-                        String artist = favSnap.child("artist").getValue(String.class);
-                        String album = favSnap.child("album").getValue(String.class);
-
-                        if (title != null && artist != null) {
-                            SongEntity firebaseSong = createTempSong(title, artist, album);
-                            SongMatcher.MatchResult matchResult = songMatcher.findMatch(firebaseSong, localSongs);
-
-                            if (matchResult.isMatched() && matchResult.getLocalSong() != null) {
-                                songRepository.updateFavorite(matchResult.getLocalSong().getId(), true);
-                                favoritesProcessed++;
+                                // Add matched songs to playlist (dùng DAO trực tiếp, không qua async Repository)
+                                if (!matchedSongIds.isEmpty()) {
+                                    for (int i = 0; i < matchedSongIds.size(); i++) {
+                                        com.example.nghenhac.data.local.entity.PlaylistSongCrossRef crossRef =
+                                                new com.example.nghenhac.data.local.entity.PlaylistSongCrossRef(
+                                                        localPlaylistId, matchedSongIds.get(i), i);
+                                        playlistDao.addSongToPlaylist(crossRef);
+                                    }
+                                    playlistDao.updateSongCount(localPlaylistId);
+                                }
+                                playlistsProcessed++;
                             }
                         }
-                    }
-                    result.setFavoritesDownloaded(favoritesProcessed);
-                    result.setSuccess(true);
+                        result.setPlaylistsDownloaded(playlistsProcessed);
 
-                } catch (Exception e) {
-                    result.setError(new SyncException("Lỗi xử lý dữ liệu: " + e.getMessage()));
-                }
-                latch.countDown();
+                        // Parse favorites
+                        DataSnapshot favoritesSnapshot = snapshot.child("favorites");
+                        int favoritesProcessed = 0;
+                        for (DataSnapshot favSnap : favoritesSnapshot.getChildren()) {
+                            String title = favSnap.child("title").getValue(String.class);
+                            String artist = favSnap.child("artist").getValue(String.class);
+                            String album = favSnap.child("album").getValue(String.class);
+
+                            if (title != null && artist != null) {
+                                SongEntity firebaseSong = createTempSong(title, artist, album);
+                                SongMatcher.MatchResult matchResult = songMatcher.findMatch(firebaseSong, localSongs);
+
+                                if (matchResult.isMatched() && matchResult.getLocalSong() != null) {
+                                    songDao.updateFavorite(matchResult.getLocalSong().getId(), true);
+                                    favoritesProcessed++;
+                                }
+                            }
+                        }
+                        result.setFavoritesDownloaded(favoritesProcessed);
+                        result.setSuccess(true);
+
+                    } catch (Exception e) {
+                        Log.e(TAG, "Download error: " + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
+                        result.setError(new SyncException("Lỗi xử lý dữ liệu: " + e.getMessage()));
+                    } finally {
+                        latch.countDown();
+                    }
+                }); // end dbExecutor.execute
             }
 
             @Override
@@ -373,7 +397,7 @@ public class FirebaseSyncManager {
     @NonNull
     private List<PlaylistEntity> getLocalPlaylistsSync() {
         try {
-            List<PlaylistEntity> playlists = playlistRepository.getAllPlaylists().getValue();
+            List<PlaylistEntity> playlists = playlistDao.getAllPlaylistsSync();
             return playlists != null ? playlists : new ArrayList<>();
         } catch (Exception e) {
             Log.w(TAG, "Failed to get local playlists", e);
@@ -387,7 +411,7 @@ public class FirebaseSyncManager {
     @NonNull
     private List<SongEntity> getSongsInPlaylistSync(long playlistId) {
         try {
-            List<SongEntity> songs = playlistRepository.getSongsInPlaylist(playlistId).getValue();
+            List<SongEntity> songs = playlistDao.getSongsInPlaylistSync(playlistId);
             return songs != null ? songs : new ArrayList<>();
         } catch (Exception e) {
             Log.w(TAG, "Failed to get songs for playlist " + playlistId, e);
@@ -401,7 +425,7 @@ public class FirebaseSyncManager {
     @NonNull
     private List<SongEntity> getLocalFavoritesSync() {
         try {
-            List<SongEntity> favorites = songRepository.getFavorites().getValue();
+            List<SongEntity> favorites = songDao.getFavoritesSync();
             return favorites != null ? favorites : new ArrayList<>();
         } catch (Exception e) {
             Log.w(TAG, "Failed to get local favorites", e);
@@ -415,7 +439,7 @@ public class FirebaseSyncManager {
     @NonNull
     private List<SongEntity> getLocalAllSongsSync() {
         try {
-            List<SongEntity> songs = songRepository.getAllSongs().getValue();
+            List<SongEntity> songs = songDao.getAllSongsSync();
             return songs != null ? songs : new ArrayList<>();
         } catch (Exception e) {
             Log.w(TAG, "Failed to get all local songs", e);

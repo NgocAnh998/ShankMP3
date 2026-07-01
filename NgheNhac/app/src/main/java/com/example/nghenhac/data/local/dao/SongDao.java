@@ -51,6 +51,10 @@ public interface SongDao {
     @Query("SELECT * FROM songs ORDER BY title ASC")
     List<SongEntity> getAllSongsSync();
 
+    /** Lấy tất cả bài hát yêu thích (sync, không LiveData). Dùng cho background sync. */
+    @Query("SELECT * FROM songs WHERE is_favorite = 1 ORDER BY title ASC")
+    List<SongEntity> getFavoritesSync();
+
     /**
      * Lấy bài hát theo ID.
      *
@@ -73,9 +77,9 @@ public interface SongDao {
      * Lưu ý: Không phân biệt hoa/thường (LIKE mặc định của SQLite không phân biệt với ASCII).
      */
     @Query("SELECT * FROM songs WHERE title LIKE '%' || :query || '%' " +
-           "OR artist LIKE '%' || :query || '%' " +
-           "OR album LIKE '%' || :query || '%' " +
-           "ORDER BY title ASC")
+            "OR artist LIKE '%' || :query || '%' " +
+            "OR album LIKE '%' || :query || '%' " +
+            "ORDER BY title ASC")
     LiveData<List<SongEntity>> search(String query);
 
     /**
@@ -108,9 +112,9 @@ public interface SongDao {
      * Dùng trong PlaylistImporter để match bài hát khi import playlist.
      */
     @Query("SELECT * FROM songs WHERE title LIKE '%' || :query || '%' " +
-           "OR artist LIKE '%' || :query || '%' " +
-           "OR album LIKE '%' || :query || '%' " +
-           "ORDER BY title ASC")
+            "OR artist LIKE '%' || :query || '%' " +
+            "OR album LIKE '%' || :query || '%' " +
+            "ORDER BY title ASC")
     List<SongEntity> searchSync(String query);
 
     /**

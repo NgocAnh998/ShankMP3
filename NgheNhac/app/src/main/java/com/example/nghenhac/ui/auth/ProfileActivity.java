@@ -96,7 +96,8 @@ public class ProfileActivity extends AppCompatActivity {
         loginPrompt = findViewById(R.id.profile_login_prompt);
 
         // Action listeners
-        findViewById(R.id.profile_back_button).setOnClickListener(v -> finish());
+        ((com.google.android.material.appbar.MaterialToolbar) findViewById(R.id.profile_back_button))
+                .setNavigationOnClickListener(v -> finish());
         syncButton.setOnClickListener(v -> performManualSync());
         logoutButton.setOnClickListener(v -> showLogoutConfirmation());
         loginButton.setOnClickListener(v -> {
