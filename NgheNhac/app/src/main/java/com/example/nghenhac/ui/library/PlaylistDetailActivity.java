@@ -133,7 +133,11 @@ public class PlaylistDetailActivity extends AppCompatActivity {
 
     private void setupRecyclerView() {
         androidx.recyclerview.widget.RecyclerView recyclerView = findViewById(R.id.playlist_detail_song_list);
-        recyclerView.setHasFixedSize(true);
+        // KHÔNG dùng setHasFixedSize(true) ở đây: RecyclerView này có layout_height="wrap_content"
+        // (nằm trong NestedScrollView), chiều cao phụ thuộc số lượng item. setHasFixedSize(true)
+        // báo RecyclerView bỏ qua việc đo lại kích thước khi nội dung thay đổi — vì dữ liệu load
+        // bất đồng bộ (LiveData), lần đo đầu tiên adapter rỗng nên RecyclerView bị "kẹt" ở cao 0,
+        // dẫn đến item có trong adapter nhưng không hiển thị/không bấm được.
         recyclerView.setItemViewCacheSize(20);
 
         songAdapter = new SongAdapter();
@@ -343,7 +347,7 @@ public class PlaylistDetailActivity extends AppCompatActivity {
      */
     private void showAddSongsDialog() {
         final SongRepository songRepo = SongRepository.getInstance(this);
-        
+
         // Dùng observeOnce: Room tự load data trên background thread rồi callback trên UI thread
         final androidx.lifecycle.LiveData<List<SongEntity>> songsLiveData = songRepo.getAllSongs();
         songsLiveData.observe(this, new androidx.lifecycle.Observer<List<SongEntity>>() {

@@ -139,7 +139,9 @@ public class AlbumDetailActivity extends AppCompatActivity {
 
     private void setupRecyclerView() {
         androidx.recyclerview.widget.RecyclerView recyclerView = findViewById(R.id.album_detail_song_list);
-        recyclerView.setHasFixedSize(true);
+        // KHÔNG dùng setHasFixedSize(true): RecyclerView này có layout_height="wrap_content"
+        // trong màn hình cuộn, chiều cao phụ thuộc số item load bất đồng bộ — xem giải thích
+        // chi tiết trong PlaylistDetailActivity.setupRecyclerView().
         recyclerView.setItemViewCacheSize(20);
 
         songAdapter = new SongAdapter();

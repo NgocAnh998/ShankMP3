@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="gcm_defaultSenderId" translatable="false">840374091316</string>
+    <string name="google_api_key" translatable="false">AIzaSyBuwDAi8CHBzLNp_jWq1F-ywABHgJrz4w4</string>
+    <string name="google_app_id" translatable="false">1:840374091316:android:ee3fecac245de464881461</string>
+    <string name="google_crash_reporting_api_key" translatable="false">AIzaSyBuwDAi8CHBzLNp_jWq1F-ywABHgJrz4w4</string>
+    <string name="google_storage_bucket" translatable="false">neural-theory-481912-k0.firebasestorage.app</string>
+    <string name="project_id" translatable="false">neural-theory-481912-k0</string>
+</resources>

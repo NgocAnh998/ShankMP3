@@ -73,9 +73,9 @@ public interface SongDao {
      * Lưu ý: Không phân biệt hoa/thường (LIKE mặc định của SQLite không phân biệt với ASCII).
      */
     @Query("SELECT * FROM songs WHERE title LIKE '%' || :query || '%' " +
-           "OR artist LIKE '%' || :query || '%' " +
-           "OR album LIKE '%' || :query || '%' " +
-           "ORDER BY title ASC")
+            "OR artist LIKE '%' || :query || '%' " +
+            "OR album LIKE '%' || :query || '%' " +
+            "ORDER BY title ASC")
     LiveData<List<SongEntity>> search(String query);
 
     /**
@@ -108,9 +108,9 @@ public interface SongDao {
      * Dùng trong PlaylistImporter để match bài hát khi import playlist.
      */
     @Query("SELECT * FROM songs WHERE title LIKE '%' || :query || '%' " +
-           "OR artist LIKE '%' || :query || '%' " +
-           "OR album LIKE '%' || :query || '%' " +
-           "ORDER BY title ASC")
+            "OR artist LIKE '%' || :query || '%' " +
+            "OR album LIKE '%' || :query || '%' " +
+            "ORDER BY title ASC")
     List<SongEntity> searchSync(String query);
 
     /**
@@ -125,6 +125,34 @@ public interface SongDao {
      */
     @Query("SELECT * FROM songs WHERE media_store_id = :mediaStoreId LIMIT 1")
     SongEntity getByMediaStoreIdSync(long mediaStoreId);
+
+    /**
+     * Lấy toàn bộ cặp (id, media_store_id) hiện có trong DB — dùng để build map tra cứu nhanh.
+     *
+     * Nguyên lý:
+     * - Dùng trong quá trình đồng bộ MediaStore → Room để giữ nguyên id cũ cho bài hát đã tồn tại,
+     *   tránh việc REPLACE (do trùng unique index media_store_id) xoá + tạo lại bản ghi với id MỚI,
+     *   điều này sẽ làm mất liên kết playlist_songs / favorites vì FK CASCADE sẽ xoá theo.
+     * - Trả về 1 lần duy nhất (bulk) thay vì query từng bài (N+1) để tối ưu hiệu năng khi thư viện lớn.
+     *
+     * Output: Danh sách IdMapping(id, mediaStoreId) cho các bài hát có media_store_id khác null.
+     */
+    @Query("SELECT id, media_store_id AS mediaStoreId, is_favorite AS isFavorite FROM songs WHERE media_store_id IS NOT NULL")
+    List<SongIdMapping> getMediaStoreIdMappings();
+
+    /**
+     * POJO nhẹ dùng cho getMediaStoreIdMappings() — chỉ chứa các cột cần thiết,
+     * tránh phải load toàn bộ SongEntity (nhiều cột) chỉ để lấy id.
+     *
+     * isFavorite được thêm vào để giữ nguyên trạng thái yêu thích khi đồng bộ lại
+     * (updateAll() ghi đè toàn bộ cột, nếu không mang theo isFavorite cũ thì bài hát
+     * quét mới sẽ có is_favorite = false mặc định, làm mất trạng thái yêu thích).
+     */
+    class SongIdMapping {
+        public long id;
+        public long mediaStoreId;
+        public boolean isFavorite;
+    }
 
     /**
      * Lấy bài hát theo ID (phiên bản đồng bộ).
@@ -194,6 +222,23 @@ public interface SongDao {
      */
     @Update
     int update(SongEntity song);
+
+    /**
+     * Cập nhật nhiều bài hát cùng lúc (UPDATE tại chỗ theo primary key).
+     *
+     * Nguyên lý — quan trọng để tránh mất playlist khi đồng bộ MediaStore:
+     * - Room @Update sinh ra câu lệnh UPDATE thuần (UPDATE songs SET ... WHERE id = ?),
+     *   KHÔNG phải DELETE + INSERT như OnConflictStrategy.REPLACE.
+     * - Vì không có DELETE nào xảy ra trên bảng songs, ràng buộc FK ON DELETE CASCADE
+     *   của playlist_songs (và cached_songs) sẽ KHÔNG bị kích hoạt.
+     * - Dùng method này cho các bài hát đã tồn tại (match theo media_store_id) khi
+     *   đồng bộ lại từ MediaStore, thay vì insertAll() với REPLACE — để giữ nguyên
+     *   liên kết playlist và trạng thái yêu thích.
+     *
+     * Input: songs — danh sách entity cần cập nhật (đã có id trùng bản ghi cũ).
+     */
+    @Update
+    void updateAll(List<SongEntity> songs);
 
     /**
      * Cập nhật trạng thái yêu thích của bài hát.

@@ -1,0 +1,1401 @@
+package com.example.nghenhac.data.local.dao;
+
+import androidx.annotation.NonNull;
+import androidx.lifecycle.LiveData;
+import androidx.room.EntityDeleteOrUpdateAdapter;
+import androidx.room.EntityInsertAdapter;
+import androidx.room.RoomDatabase;
+import androidx.room.util.DBUtil;
+import androidx.room.util.SQLiteConnectionUtil;
+import androidx.room.util.SQLiteStatementUtil;
+import androidx.sqlite.SQLiteStatement;
+import com.example.nghenhac.data.local.entity.SongEntity;
+import java.lang.Class;
+import java.lang.Integer;
+import java.lang.Long;
+import java.lang.Override;
+import java.lang.String;
+import java.lang.SuppressWarnings;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import javax.annotation.processing.Generated;
+
+@Generated("androidx.room.RoomProcessor")
+@SuppressWarnings({"unchecked", "deprecation", "removal"})
+public final class SongDao_Impl implements SongDao {
+  private final RoomDatabase __db;
+
+  private final EntityInsertAdapter<SongEntity> __insertAdapterOfSongEntity;
+
+  private final EntityDeleteOrUpdateAdapter<SongEntity> __deleteAdapterOfSongEntity;
+
+  private final EntityDeleteOrUpdateAdapter<SongEntity> __updateAdapterOfSongEntity;
+
+  public SongDao_Impl(@NonNull final RoomDatabase __db) {
+    this.__db = __db;
+    this.__insertAdapterOfSongEntity = new EntityInsertAdapter<SongEntity>() {
+      @Override
+      @NonNull
+      protected String createQuery() {
+        return "INSERT OR REPLACE INTO `songs` (`id`,`title`,`artist`,`album`,`duration`,`file_path`,`album_art_uri`,`media_store_id`,`is_favorite`,`date_added`,`track_number`,`mime_type`,`file_size`) VALUES (nullif(?, 0),?,?,?,?,?,?,?,?,?,?,?,?)";
+      }
+
+      @Override
+      protected void bind(@NonNull final SQLiteStatement statement, final SongEntity entity) {
+        statement.bindLong(1, entity.getId());
+        if (entity.getTitle() == null) {
+          statement.bindNull(2);
+        } else {
+          statement.bindText(2, entity.getTitle());
+        }
+        if (entity.getArtist() == null) {
+          statement.bindNull(3);
+        } else {
+          statement.bindText(3, entity.getArtist());
+        }
+        if (entity.getAlbum() == null) {
+          statement.bindNull(4);
+        } else {
+          statement.bindText(4, entity.getAlbum());
+        }
+        statement.bindLong(5, entity.getDuration());
+        if (entity.getFilePath() == null) {
+          statement.bindNull(6);
+        } else {
+          statement.bindText(6, entity.getFilePath());
+        }
+        if (entity.getAlbumArtUri() == null) {
+          statement.bindNull(7);
+        } else {
+          statement.bindText(7, entity.getAlbumArtUri());
+        }
+        if (entity.getMediaStoreId() == null) {
+          statement.bindNull(8);
+        } else {
+          statement.bindLong(8, entity.getMediaStoreId());
+        }
+        final int _tmp = entity.isFavorite() ? 1 : 0;
+        statement.bindLong(9, _tmp);
+        statement.bindLong(10, entity.getDateAdded());
+        statement.bindLong(11, entity.getTrackNumber());
+        if (entity.getMimeType() == null) {
+          statement.bindNull(12);
+        } else {
+          statement.bindText(12, entity.getMimeType());
+        }
+        statement.bindLong(13, entity.getFileSize());
+      }
+    };
+    this.__deleteAdapterOfSongEntity = new EntityDeleteOrUpdateAdapter<SongEntity>() {
+      @Override
+      @NonNull
+      protected String createQuery() {
+        return "DELETE FROM `songs` WHERE `id` = ?";
+      }
+
+      @Override
+      protected void bind(@NonNull final SQLiteStatement statement, final SongEntity entity) {
+        statement.bindLong(1, entity.getId());
+      }
+    };
+    this.__updateAdapterOfSongEntity = new EntityDeleteOrUpdateAdapter<SongEntity>() {
+      @Override
+      @NonNull
+      protected String createQuery() {
+        return "UPDATE OR ABORT `songs` SET `id` = ?,`title` = ?,`artist` = ?,`album` = ?,`duration` = ?,`file_path` = ?,`album_art_uri` = ?,`media_store_id` = ?,`is_favorite` = ?,`date_added` = ?,`track_number` = ?,`mime_type` = ?,`file_size` = ? WHERE `id` = ?";
+      }
+
+      @Override
+      protected void bind(@NonNull final SQLiteStatement statement, final SongEntity entity) {
+        statement.bindLong(1, entity.getId());
+        if (entity.getTitle() == null) {
+          statement.bindNull(2);
+        } else {
+          statement.bindText(2, entity.getTitle());
+        }
+        if (entity.getArtist() == null) {
+          statement.bindNull(3);
+        } else {
+          statement.bindText(3, entity.getArtist());
+        }
+        if (entity.getAlbum() == null) {
+          statement.bindNull(4);
+        } else {
+          statement.bindText(4, entity.getAlbum());
+        }
+        statement.bindLong(5, entity.getDuration());
+        if (entity.getFilePath() == null) {
+          statement.bindNull(6);
+        } else {
+          statement.bindText(6, entity.getFilePath());
+        }
+        if (entity.getAlbumArtUri() == null) {
+          statement.bindNull(7);
+        } else {
+          statement.bindText(7, entity.getAlbumArtUri());
+        }
+        if (entity.getMediaStoreId() == null) {
+          statement.bindNull(8);
+        } else {
+          statement.bindLong(8, entity.getMediaStoreId());
+        }
+        final int _tmp = entity.isFavorite() ? 1 : 0;
+        statement.bindLong(9, _tmp);
+        statement.bindLong(10, entity.getDateAdded());
+        statement.bindLong(11, entity.getTrackNumber());
+        if (entity.getMimeType() == null) {
+          statement.bindNull(12);
+        } else {
+          statement.bindText(12, entity.getMimeType());
+        }
+        statement.bindLong(13, entity.getFileSize());
+        statement.bindLong(14, entity.getId());
+      }
+    };
+  }
+
+  @Override
+  public long insert(final SongEntity song) {
+    return DBUtil.performBlocking(__db, false, true, (_connection) -> {
+      return __insertAdapterOfSongEntity.insertAndReturnId(_connection, song);
+    });
+  }
+
+  @Override
+  public List<Long> insertAll(final List<SongEntity> songs) {
+    return DBUtil.performBlocking(__db, false, true, (_connection) -> {
+      return __insertAdapterOfSongEntity.insertAndReturnIdsList(_connection, songs);
+    });
+  }
+
+  @Override
+  public int delete(final SongEntity song) {
+    return DBUtil.performBlocking(__db, false, true, (_connection) -> {
+      int _result = 0;
+      _result += __deleteAdapterOfSongEntity.handle(_connection, song);
+      return _result;
+    });
+  }
+
+  @Override
+  public int update(final SongEntity song) {
+    return DBUtil.performBlocking(__db, false, true, (_connection) -> {
+      int _result = 0;
+      _result += __updateAdapterOfSongEntity.handle(_connection, song);
+      return _result;
+    });
+  }
+
+  @Override
+  public LiveData<List<SongEntity>> getAllSongs() {
+    final String _sql = "SELECT * FROM songs ORDER BY title ASC";
+    return __db.getInvalidationTracker().createLiveData(new String[] {"songs"}, false, (_connection) -> {
+      final SQLiteStatement _stmt = _connection.prepare(_sql);
+      try {
+        final int _columnIndexOfId = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "id");
+        final int _columnIndexOfTitle = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "title");
+        final int _columnIndexOfArtist = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "artist");
+        final int _columnIndexOfAlbum = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "album");
+        final int _columnIndexOfDuration = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "duration");
+        final int _columnIndexOfFilePath = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "file_path");
+        final int _columnIndexOfAlbumArtUri = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "album_art_uri");
+        final int _columnIndexOfMediaStoreId = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "media_store_id");
+        final int _columnIndexOfIsFavorite = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "is_favorite");
+        final int _columnIndexOfDateAdded = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "date_added");
+        final int _columnIndexOfTrackNumber = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "track_number");
+        final int _columnIndexOfMimeType = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "mime_type");
+        final int _columnIndexOfFileSize = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "file_size");
+        final List<SongEntity> _result = new ArrayList<SongEntity>();
+        while (_stmt.step()) {
+          final SongEntity _item;
+          _item = new SongEntity();
+          final long _tmpId;
+          _tmpId = _stmt.getLong(_columnIndexOfId);
+          _item.setId(_tmpId);
+          final String _tmpTitle;
+          if (_stmt.isNull(_columnIndexOfTitle)) {
+            _tmpTitle = null;
+          } else {
+            _tmpTitle = _stmt.getText(_columnIndexOfTitle);
+          }
+          _item.setTitle(_tmpTitle);
+          final String _tmpArtist;
+          if (_stmt.isNull(_columnIndexOfArtist)) {
+            _tmpArtist = null;
+          } else {
+            _tmpArtist = _stmt.getText(_columnIndexOfArtist);
+          }
+          _item.setArtist(_tmpArtist);
+          final String _tmpAlbum;
+          if (_stmt.isNull(_columnIndexOfAlbum)) {
+            _tmpAlbum = null;
+          } else {
+            _tmpAlbum = _stmt.getText(_columnIndexOfAlbum);
+          }
+          _item.setAlbum(_tmpAlbum);
+          final long _tmpDuration;
+          _tmpDuration = _stmt.getLong(_columnIndexOfDuration);
+          _item.setDuration(_tmpDuration);
+          final String _tmpFilePath;
+          if (_stmt.isNull(_columnIndexOfFilePath)) {
+            _tmpFilePath = null;
+          } else {
+            _tmpFilePath = _stmt.getText(_columnIndexOfFilePath);
+          }
+          _item.setFilePath(_tmpFilePath);
+          final String _tmpAlbumArtUri;
+          if (_stmt.isNull(_columnIndexOfAlbumArtUri)) {
+            _tmpAlbumArtUri = null;
+          } else {
+            _tmpAlbumArtUri = _stmt.getText(_columnIndexOfAlbumArtUri);
+          }
+          _item.setAlbumArtUri(_tmpAlbumArtUri);
+          final Long _tmpMediaStoreId;
+          if (_stmt.isNull(_columnIndexOfMediaStoreId)) {
+            _tmpMediaStoreId = null;
+          } else {
+            _tmpMediaStoreId = _stmt.getLong(_columnIndexOfMediaStoreId);
+          }
+          _item.setMediaStoreId(_tmpMediaStoreId);
+          final boolean _tmpIsFavorite;
+          final int _tmp;
+          _tmp = (int) (_stmt.getLong(_columnIndexOfIsFavorite));
+          _tmpIsFavorite = _tmp != 0;
+          _item.setFavorite(_tmpIsFavorite);
+          final long _tmpDateAdded;
+          _tmpDateAdded = _stmt.getLong(_columnIndexOfDateAdded);
+          _item.setDateAdded(_tmpDateAdded);
+          final int _tmpTrackNumber;
+          _tmpTrackNumber = (int) (_stmt.getLong(_columnIndexOfTrackNumber));
+          _item.setTrackNumber(_tmpTrackNumber);
+          final String _tmpMimeType;
+          if (_stmt.isNull(_columnIndexOfMimeType)) {
+            _tmpMimeType = null;
+          } else {
+            _tmpMimeType = _stmt.getText(_columnIndexOfMimeType);
+          }
+          _item.setMimeType(_tmpMimeType);
+          final long _tmpFileSize;
+          _tmpFileSize = _stmt.getLong(_columnIndexOfFileSize);
+          _item.setFileSize(_tmpFileSize);
+          _result.add(_item);
+        }
+        return _result;
+      } finally {
+        _stmt.close();
+      }
+    });
+  }
+
+  @Override
+  public List<SongEntity> getAllSongsSync() {
+    final String _sql = "SELECT * FROM songs ORDER BY title ASC";
+    return DBUtil.performBlocking(__db, true, false, (_connection) -> {
+      final SQLiteStatement _stmt = _connection.prepare(_sql);
+      try {
+        final int _columnIndexOfId = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "id");
+        final int _columnIndexOfTitle = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "title");
+        final int _columnIndexOfArtist = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "artist");
+        final int _columnIndexOfAlbum = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "album");
+        final int _columnIndexOfDuration = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "duration");
+        final int _columnIndexOfFilePath = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "file_path");
+        final int _columnIndexOfAlbumArtUri = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "album_art_uri");
+        final int _columnIndexOfMediaStoreId = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "media_store_id");
+        final int _columnIndexOfIsFavorite = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "is_favorite");
+        final int _columnIndexOfDateAdded = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "date_added");
+        final int _columnIndexOfTrackNumber = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "track_number");
+        final int _columnIndexOfMimeType = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "mime_type");
+        final int _columnIndexOfFileSize = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "file_size");
+        final List<SongEntity> _result = new ArrayList<SongEntity>();
+        while (_stmt.step()) {
+          final SongEntity _item;
+          _item = new SongEntity();
+          final long _tmpId;
+          _tmpId = _stmt.getLong(_columnIndexOfId);
+          _item.setId(_tmpId);
+          final String _tmpTitle;
+          if (_stmt.isNull(_columnIndexOfTitle)) {
+            _tmpTitle = null;
+          } else {
+            _tmpTitle = _stmt.getText(_columnIndexOfTitle);
+          }
+          _item.setTitle(_tmpTitle);
+          final String _tmpArtist;
+          if (_stmt.isNull(_columnIndexOfArtist)) {
+            _tmpArtist = null;
+          } else {
+            _tmpArtist = _stmt.getText(_columnIndexOfArtist);
+          }
+          _item.setArtist(_tmpArtist);
+          final String _tmpAlbum;
+          if (_stmt.isNull(_columnIndexOfAlbum)) {
+            _tmpAlbum = null;
+          } else {
+            _tmpAlbum = _stmt.getText(_columnIndexOfAlbum);
+          }
+          _item.setAlbum(_tmpAlbum);
+          final long _tmpDuration;
+          _tmpDuration = _stmt.getLong(_columnIndexOfDuration);
+          _item.setDuration(_tmpDuration);
+          final String _tmpFilePath;
+          if (_stmt.isNull(_columnIndexOfFilePath)) {
+            _tmpFilePath = null;
+          } else {
+            _tmpFilePath = _stmt.getText(_columnIndexOfFilePath);
+          }
+          _item.setFilePath(_tmpFilePath);
+          final String _tmpAlbumArtUri;
+          if (_stmt.isNull(_columnIndexOfAlbumArtUri)) {
+            _tmpAlbumArtUri = null;
+          } else {
+            _tmpAlbumArtUri = _stmt.getText(_columnIndexOfAlbumArtUri);
+          }
+          _item.setAlbumArtUri(_tmpAlbumArtUri);
+          final Long _tmpMediaStoreId;
+          if (_stmt.isNull(_columnIndexOfMediaStoreId)) {
+            _tmpMediaStoreId = null;
+          } else {
+            _tmpMediaStoreId = _stmt.getLong(_columnIndexOfMediaStoreId);
+          }
+          _item.setMediaStoreId(_tmpMediaStoreId);
+          final boolean _tmpIsFavorite;
+          final int _tmp;
+          _tmp = (int) (_stmt.getLong(_columnIndexOfIsFavorite));
+          _tmpIsFavorite = _tmp != 0;
+          _item.setFavorite(_tmpIsFavorite);
+          final long _tmpDateAdded;
+          _tmpDateAdded = _stmt.getLong(_columnIndexOfDateAdded);
+          _item.setDateAdded(_tmpDateAdded);
+          final int _tmpTrackNumber;
+          _tmpTrackNumber = (int) (_stmt.getLong(_columnIndexOfTrackNumber));
+          _item.setTrackNumber(_tmpTrackNumber);
+          final String _tmpMimeType;
+          if (_stmt.isNull(_columnIndexOfMimeType)) {
+            _tmpMimeType = null;
+          } else {
+            _tmpMimeType = _stmt.getText(_columnIndexOfMimeType);
+          }
+          _item.setMimeType(_tmpMimeType);
+          final long _tmpFileSize;
+          _tmpFileSize = _stmt.getLong(_columnIndexOfFileSize);
+          _item.setFileSize(_tmpFileSize);
+          _result.add(_item);
+        }
+        return _result;
+      } finally {
+        _stmt.close();
+      }
+    });
+  }
+
+  @Override
+  public LiveData<SongEntity> getSongById(final long id) {
+    final String _sql = "SELECT * FROM songs WHERE id = ?";
+    return __db.getInvalidationTracker().createLiveData(new String[] {"songs"}, false, (_connection) -> {
+      final SQLiteStatement _stmt = _connection.prepare(_sql);
+      try {
+        int _argIndex = 1;
+        _stmt.bindLong(_argIndex, id);
+        final int _columnIndexOfId = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "id");
+        final int _columnIndexOfTitle = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "title");
+        final int _columnIndexOfArtist = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "artist");
+        final int _columnIndexOfAlbum = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "album");
+        final int _columnIndexOfDuration = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "duration");
+        final int _columnIndexOfFilePath = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "file_path");
+        final int _columnIndexOfAlbumArtUri = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "album_art_uri");
+        final int _columnIndexOfMediaStoreId = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "media_store_id");
+        final int _columnIndexOfIsFavorite = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "is_favorite");
+        final int _columnIndexOfDateAdded = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "date_added");
+        final int _columnIndexOfTrackNumber = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "track_number");
+        final int _columnIndexOfMimeType = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "mime_type");
+        final int _columnIndexOfFileSize = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "file_size");
+        final SongEntity _result;
+        if (_stmt.step()) {
+          _result = new SongEntity();
+          final long _tmpId;
+          _tmpId = _stmt.getLong(_columnIndexOfId);
+          _result.setId(_tmpId);
+          final String _tmpTitle;
+          if (_stmt.isNull(_columnIndexOfTitle)) {
+            _tmpTitle = null;
+          } else {
+            _tmpTitle = _stmt.getText(_columnIndexOfTitle);
+          }
+          _result.setTitle(_tmpTitle);
+          final String _tmpArtist;
+          if (_stmt.isNull(_columnIndexOfArtist)) {
+            _tmpArtist = null;
+          } else {
+            _tmpArtist = _stmt.getText(_columnIndexOfArtist);
+          }
+          _result.setArtist(_tmpArtist);
+          final String _tmpAlbum;
+          if (_stmt.isNull(_columnIndexOfAlbum)) {
+            _tmpAlbum = null;
+          } else {
+            _tmpAlbum = _stmt.getText(_columnIndexOfAlbum);
+          }
+          _result.setAlbum(_tmpAlbum);
+          final long _tmpDuration;
+          _tmpDuration = _stmt.getLong(_columnIndexOfDuration);
+          _result.setDuration(_tmpDuration);
+          final String _tmpFilePath;
+          if (_stmt.isNull(_columnIndexOfFilePath)) {
+            _tmpFilePath = null;
+          } else {
+            _tmpFilePath = _stmt.getText(_columnIndexOfFilePath);
+          }
+          _result.setFilePath(_tmpFilePath);
+          final String _tmpAlbumArtUri;
+          if (_stmt.isNull(_columnIndexOfAlbumArtUri)) {
+            _tmpAlbumArtUri = null;
+          } else {
+            _tmpAlbumArtUri = _stmt.getText(_columnIndexOfAlbumArtUri);
+          }
+          _result.setAlbumArtUri(_tmpAlbumArtUri);
+          final Long _tmpMediaStoreId;
+          if (_stmt.isNull(_columnIndexOfMediaStoreId)) {
+            _tmpMediaStoreId = null;
+          } else {
+            _tmpMediaStoreId = _stmt.getLong(_columnIndexOfMediaStoreId);
+          }
+          _result.setMediaStoreId(_tmpMediaStoreId);
+          final boolean _tmpIsFavorite;
+          final int _tmp;
+          _tmp = (int) (_stmt.getLong(_columnIndexOfIsFavorite));
+          _tmpIsFavorite = _tmp != 0;
+          _result.setFavorite(_tmpIsFavorite);
+          final long _tmpDateAdded;
+          _tmpDateAdded = _stmt.getLong(_columnIndexOfDateAdded);
+          _result.setDateAdded(_tmpDateAdded);
+          final int _tmpTrackNumber;
+          _tmpTrackNumber = (int) (_stmt.getLong(_columnIndexOfTrackNumber));
+          _result.setTrackNumber(_tmpTrackNumber);
+          final String _tmpMimeType;
+          if (_stmt.isNull(_columnIndexOfMimeType)) {
+            _tmpMimeType = null;
+          } else {
+            _tmpMimeType = _stmt.getText(_columnIndexOfMimeType);
+          }
+          _result.setMimeType(_tmpMimeType);
+          final long _tmpFileSize;
+          _tmpFileSize = _stmt.getLong(_columnIndexOfFileSize);
+          _result.setFileSize(_tmpFileSize);
+        } else {
+          _result = null;
+        }
+        return _result;
+      } finally {
+        _stmt.close();
+      }
+    });
+  }
+
+  @Override
+  public LiveData<List<SongEntity>> search(final String query) {
+    final String _sql = "SELECT * FROM songs WHERE title LIKE '%' || ? || '%' OR artist LIKE '%' || ? || '%' OR album LIKE '%' || ? || '%' ORDER BY title ASC";
+    return __db.getInvalidationTracker().createLiveData(new String[] {"songs"}, false, (_connection) -> {
+      final SQLiteStatement _stmt = _connection.prepare(_sql);
+      try {
+        int _argIndex = 1;
+        if (query == null) {
+          _stmt.bindNull(_argIndex);
+        } else {
+          _stmt.bindText(_argIndex, query);
+        }
+        _argIndex = 2;
+        if (query == null) {
+          _stmt.bindNull(_argIndex);
+        } else {
+          _stmt.bindText(_argIndex, query);
+        }
+        _argIndex = 3;
+        if (query == null) {
+          _stmt.bindNull(_argIndex);
+        } else {
+          _stmt.bindText(_argIndex, query);
+        }
+        final int _columnIndexOfId = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "id");
+        final int _columnIndexOfTitle = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "title");
+        final int _columnIndexOfArtist = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "artist");
+        final int _columnIndexOfAlbum = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "album");
+        final int _columnIndexOfDuration = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "duration");
+        final int _columnIndexOfFilePath = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "file_path");
+        final int _columnIndexOfAlbumArtUri = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "album_art_uri");
+        final int _columnIndexOfMediaStoreId = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "media_store_id");
+        final int _columnIndexOfIsFavorite = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "is_favorite");
+        final int _columnIndexOfDateAdded = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "date_added");
+        final int _columnIndexOfTrackNumber = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "track_number");
+        final int _columnIndexOfMimeType = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "mime_type");
+        final int _columnIndexOfFileSize = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "file_size");
+        final List<SongEntity> _result = new ArrayList<SongEntity>();
+        while (_stmt.step()) {
+          final SongEntity _item;
+          _item = new SongEntity();
+          final long _tmpId;
+          _tmpId = _stmt.getLong(_columnIndexOfId);
+          _item.setId(_tmpId);
+          final String _tmpTitle;
+          if (_stmt.isNull(_columnIndexOfTitle)) {
+            _tmpTitle = null;
+          } else {
+            _tmpTitle = _stmt.getText(_columnIndexOfTitle);
+          }
+          _item.setTitle(_tmpTitle);
+          final String _tmpArtist;
+          if (_stmt.isNull(_columnIndexOfArtist)) {
+            _tmpArtist = null;
+          } else {
+            _tmpArtist = _stmt.getText(_columnIndexOfArtist);
+          }
+          _item.setArtist(_tmpArtist);
+          final String _tmpAlbum;
+          if (_stmt.isNull(_columnIndexOfAlbum)) {
+            _tmpAlbum = null;
+          } else {
+            _tmpAlbum = _stmt.getText(_columnIndexOfAlbum);
+          }
+          _item.setAlbum(_tmpAlbum);
+          final long _tmpDuration;
+          _tmpDuration = _stmt.getLong(_columnIndexOfDuration);
+          _item.setDuration(_tmpDuration);
+          final String _tmpFilePath;
+          if (_stmt.isNull(_columnIndexOfFilePath)) {
+            _tmpFilePath = null;
+          } else {
+            _tmpFilePath = _stmt.getText(_columnIndexOfFilePath);
+          }
+          _item.setFilePath(_tmpFilePath);
+          final String _tmpAlbumArtUri;
+          if (_stmt.isNull(_columnIndexOfAlbumArtUri)) {
+            _tmpAlbumArtUri = null;
+          } else {
+            _tmpAlbumArtUri = _stmt.getText(_columnIndexOfAlbumArtUri);
+          }
+          _item.setAlbumArtUri(_tmpAlbumArtUri);
+          final Long _tmpMediaStoreId;
+          if (_stmt.isNull(_columnIndexOfMediaStoreId)) {
+            _tmpMediaStoreId = null;
+          } else {
+            _tmpMediaStoreId = _stmt.getLong(_columnIndexOfMediaStoreId);
+          }
+          _item.setMediaStoreId(_tmpMediaStoreId);
+          final boolean _tmpIsFavorite;
+          final int _tmp;
+          _tmp = (int) (_stmt.getLong(_columnIndexOfIsFavorite));
+          _tmpIsFavorite = _tmp != 0;
+          _item.setFavorite(_tmpIsFavorite);
+          final long _tmpDateAdded;
+          _tmpDateAdded = _stmt.getLong(_columnIndexOfDateAdded);
+          _item.setDateAdded(_tmpDateAdded);
+          final int _tmpTrackNumber;
+          _tmpTrackNumber = (int) (_stmt.getLong(_columnIndexOfTrackNumber));
+          _item.setTrackNumber(_tmpTrackNumber);
+          final String _tmpMimeType;
+          if (_stmt.isNull(_columnIndexOfMimeType)) {
+            _tmpMimeType = null;
+          } else {
+            _tmpMimeType = _stmt.getText(_columnIndexOfMimeType);
+          }
+          _item.setMimeType(_tmpMimeType);
+          final long _tmpFileSize;
+          _tmpFileSize = _stmt.getLong(_columnIndexOfFileSize);
+          _item.setFileSize(_tmpFileSize);
+          _result.add(_item);
+        }
+        return _result;
+      } finally {
+        _stmt.close();
+      }
+    });
+  }
+
+  @Override
+  public LiveData<List<SongEntity>> getFavorites() {
+    final String _sql = "SELECT * FROM songs WHERE is_favorite = 1 ORDER BY title ASC";
+    return __db.getInvalidationTracker().createLiveData(new String[] {"songs"}, false, (_connection) -> {
+      final SQLiteStatement _stmt = _connection.prepare(_sql);
+      try {
+        final int _columnIndexOfId = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "id");
+        final int _columnIndexOfTitle = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "title");
+        final int _columnIndexOfArtist = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "artist");
+        final int _columnIndexOfAlbum = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "album");
+        final int _columnIndexOfDuration = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "duration");
+        final int _columnIndexOfFilePath = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "file_path");
+        final int _columnIndexOfAlbumArtUri = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "album_art_uri");
+        final int _columnIndexOfMediaStoreId = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "media_store_id");
+        final int _columnIndexOfIsFavorite = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "is_favorite");
+        final int _columnIndexOfDateAdded = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "date_added");
+        final int _columnIndexOfTrackNumber = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "track_number");
+        final int _columnIndexOfMimeType = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "mime_type");
+        final int _columnIndexOfFileSize = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "file_size");
+        final List<SongEntity> _result = new ArrayList<SongEntity>();
+        while (_stmt.step()) {
+          final SongEntity _item;
+          _item = new SongEntity();
+          final long _tmpId;
+          _tmpId = _stmt.getLong(_columnIndexOfId);
+          _item.setId(_tmpId);
+          final String _tmpTitle;
+          if (_stmt.isNull(_columnIndexOfTitle)) {
+            _tmpTitle = null;
+          } else {
+            _tmpTitle = _stmt.getText(_columnIndexOfTitle);
+          }
+          _item.setTitle(_tmpTitle);
+          final String _tmpArtist;
+          if (_stmt.isNull(_columnIndexOfArtist)) {
+            _tmpArtist = null;
+          } else {
+            _tmpArtist = _stmt.getText(_columnIndexOfArtist);
+          }
+          _item.setArtist(_tmpArtist);
+          final String _tmpAlbum;
+          if (_stmt.isNull(_columnIndexOfAlbum)) {
+            _tmpAlbum = null;
+          } else {
+            _tmpAlbum = _stmt.getText(_columnIndexOfAlbum);
+          }
+          _item.setAlbum(_tmpAlbum);
+          final long _tmpDuration;
+          _tmpDuration = _stmt.getLong(_columnIndexOfDuration);
+          _item.setDuration(_tmpDuration);
+          final String _tmpFilePath;
+          if (_stmt.isNull(_columnIndexOfFilePath)) {
+            _tmpFilePath = null;
+          } else {
+            _tmpFilePath = _stmt.getText(_columnIndexOfFilePath);
+          }
+          _item.setFilePath(_tmpFilePath);
+          final String _tmpAlbumArtUri;
+          if (_stmt.isNull(_columnIndexOfAlbumArtUri)) {
+            _tmpAlbumArtUri = null;
+          } else {
+            _tmpAlbumArtUri = _stmt.getText(_columnIndexOfAlbumArtUri);
+          }
+          _item.setAlbumArtUri(_tmpAlbumArtUri);
+          final Long _tmpMediaStoreId;
+          if (_stmt.isNull(_columnIndexOfMediaStoreId)) {
+            _tmpMediaStoreId = null;
+          } else {
+            _tmpMediaStoreId = _stmt.getLong(_columnIndexOfMediaStoreId);
+          }
+          _item.setMediaStoreId(_tmpMediaStoreId);
+          final boolean _tmpIsFavorite;
+          final int _tmp;
+          _tmp = (int) (_stmt.getLong(_columnIndexOfIsFavorite));
+          _tmpIsFavorite = _tmp != 0;
+          _item.setFavorite(_tmpIsFavorite);
+          final long _tmpDateAdded;
+          _tmpDateAdded = _stmt.getLong(_columnIndexOfDateAdded);
+          _item.setDateAdded(_tmpDateAdded);
+          final int _tmpTrackNumber;
+          _tmpTrackNumber = (int) (_stmt.getLong(_columnIndexOfTrackNumber));
+          _item.setTrackNumber(_tmpTrackNumber);
+          final String _tmpMimeType;
+          if (_stmt.isNull(_columnIndexOfMimeType)) {
+            _tmpMimeType = null;
+          } else {
+            _tmpMimeType = _stmt.getText(_columnIndexOfMimeType);
+          }
+          _item.setMimeType(_tmpMimeType);
+          final long _tmpFileSize;
+          _tmpFileSize = _stmt.getLong(_columnIndexOfFileSize);
+          _item.setFileSize(_tmpFileSize);
+          _result.add(_item);
+        }
+        return _result;
+      } finally {
+        _stmt.close();
+      }
+    });
+  }
+
+  @Override
+  public LiveData<List<SongEntity>> getByAlbum(final String album) {
+    final String _sql = "SELECT * FROM songs WHERE album = ? ORDER BY track_number ASC";
+    return __db.getInvalidationTracker().createLiveData(new String[] {"songs"}, false, (_connection) -> {
+      final SQLiteStatement _stmt = _connection.prepare(_sql);
+      try {
+        int _argIndex = 1;
+        if (album == null) {
+          _stmt.bindNull(_argIndex);
+        } else {
+          _stmt.bindText(_argIndex, album);
+        }
+        final int _columnIndexOfId = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "id");
+        final int _columnIndexOfTitle = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "title");
+        final int _columnIndexOfArtist = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "artist");
+        final int _columnIndexOfAlbum = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "album");
+        final int _columnIndexOfDuration = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "duration");
+        final int _columnIndexOfFilePath = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "file_path");
+        final int _columnIndexOfAlbumArtUri = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "album_art_uri");
+        final int _columnIndexOfMediaStoreId = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "media_store_id");
+        final int _columnIndexOfIsFavorite = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "is_favorite");
+        final int _columnIndexOfDateAdded = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "date_added");
+        final int _columnIndexOfTrackNumber = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "track_number");
+        final int _columnIndexOfMimeType = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "mime_type");
+        final int _columnIndexOfFileSize = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "file_size");
+        final List<SongEntity> _result = new ArrayList<SongEntity>();
+        while (_stmt.step()) {
+          final SongEntity _item;
+          _item = new SongEntity();
+          final long _tmpId;
+          _tmpId = _stmt.getLong(_columnIndexOfId);
+          _item.setId(_tmpId);
+          final String _tmpTitle;
+          if (_stmt.isNull(_columnIndexOfTitle)) {
+            _tmpTitle = null;
+          } else {
+            _tmpTitle = _stmt.getText(_columnIndexOfTitle);
+          }
+          _item.setTitle(_tmpTitle);
+          final String _tmpArtist;
+          if (_stmt.isNull(_columnIndexOfArtist)) {
+            _tmpArtist = null;
+          } else {
+            _tmpArtist = _stmt.getText(_columnIndexOfArtist);
+          }
+          _item.setArtist(_tmpArtist);
+          final String _tmpAlbum;
+          if (_stmt.isNull(_columnIndexOfAlbum)) {
+            _tmpAlbum = null;
+          } else {
+            _tmpAlbum = _stmt.getText(_columnIndexOfAlbum);
+          }
+          _item.setAlbum(_tmpAlbum);
+          final long _tmpDuration;
+          _tmpDuration = _stmt.getLong(_columnIndexOfDuration);
+          _item.setDuration(_tmpDuration);
+          final String _tmpFilePath;
+          if (_stmt.isNull(_columnIndexOfFilePath)) {
+            _tmpFilePath = null;
+          } else {
+            _tmpFilePath = _stmt.getText(_columnIndexOfFilePath);
+          }
+          _item.setFilePath(_tmpFilePath);
+          final String _tmpAlbumArtUri;
+          if (_stmt.isNull(_columnIndexOfAlbumArtUri)) {
+            _tmpAlbumArtUri = null;
+          } else {
+            _tmpAlbumArtUri = _stmt.getText(_columnIndexOfAlbumArtUri);
+          }
+          _item.setAlbumArtUri(_tmpAlbumArtUri);
+          final Long _tmpMediaStoreId;
+          if (_stmt.isNull(_columnIndexOfMediaStoreId)) {
+            _tmpMediaStoreId = null;
+          } else {
+            _tmpMediaStoreId = _stmt.getLong(_columnIndexOfMediaStoreId);
+          }
+          _item.setMediaStoreId(_tmpMediaStoreId);
+          final boolean _tmpIsFavorite;
+          final int _tmp;
+          _tmp = (int) (_stmt.getLong(_columnIndexOfIsFavorite));
+          _tmpIsFavorite = _tmp != 0;
+          _item.setFavorite(_tmpIsFavorite);
+          final long _tmpDateAdded;
+          _tmpDateAdded = _stmt.getLong(_columnIndexOfDateAdded);
+          _item.setDateAdded(_tmpDateAdded);
+          final int _tmpTrackNumber;
+          _tmpTrackNumber = (int) (_stmt.getLong(_columnIndexOfTrackNumber));
+          _item.setTrackNumber(_tmpTrackNumber);
+          final String _tmpMimeType;
+          if (_stmt.isNull(_columnIndexOfMimeType)) {
+            _tmpMimeType = null;
+          } else {
+            _tmpMimeType = _stmt.getText(_columnIndexOfMimeType);
+          }
+          _item.setMimeType(_tmpMimeType);
+          final long _tmpFileSize;
+          _tmpFileSize = _stmt.getLong(_columnIndexOfFileSize);
+          _item.setFileSize(_tmpFileSize);
+          _result.add(_item);
+        }
+        return _result;
+      } finally {
+        _stmt.close();
+      }
+    });
+  }
+
+  @Override
+  public LiveData<List<SongEntity>> getByArtist(final String artist) {
+    final String _sql = "SELECT * FROM songs WHERE artist = ? ORDER BY album, track_number ASC";
+    return __db.getInvalidationTracker().createLiveData(new String[] {"songs"}, false, (_connection) -> {
+      final SQLiteStatement _stmt = _connection.prepare(_sql);
+      try {
+        int _argIndex = 1;
+        if (artist == null) {
+          _stmt.bindNull(_argIndex);
+        } else {
+          _stmt.bindText(_argIndex, artist);
+        }
+        final int _columnIndexOfId = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "id");
+        final int _columnIndexOfTitle = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "title");
+        final int _columnIndexOfArtist = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "artist");
+        final int _columnIndexOfAlbum = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "album");
+        final int _columnIndexOfDuration = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "duration");
+        final int _columnIndexOfFilePath = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "file_path");
+        final int _columnIndexOfAlbumArtUri = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "album_art_uri");
+        final int _columnIndexOfMediaStoreId = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "media_store_id");
+        final int _columnIndexOfIsFavorite = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "is_favorite");
+        final int _columnIndexOfDateAdded = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "date_added");
+        final int _columnIndexOfTrackNumber = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "track_number");
+        final int _columnIndexOfMimeType = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "mime_type");
+        final int _columnIndexOfFileSize = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "file_size");
+        final List<SongEntity> _result = new ArrayList<SongEntity>();
+        while (_stmt.step()) {
+          final SongEntity _item;
+          _item = new SongEntity();
+          final long _tmpId;
+          _tmpId = _stmt.getLong(_columnIndexOfId);
+          _item.setId(_tmpId);
+          final String _tmpTitle;
+          if (_stmt.isNull(_columnIndexOfTitle)) {
+            _tmpTitle = null;
+          } else {
+            _tmpTitle = _stmt.getText(_columnIndexOfTitle);
+          }
+          _item.setTitle(_tmpTitle);
+          final String _tmpArtist;
+          if (_stmt.isNull(_columnIndexOfArtist)) {
+            _tmpArtist = null;
+          } else {
+            _tmpArtist = _stmt.getText(_columnIndexOfArtist);
+          }
+          _item.setArtist(_tmpArtist);
+          final String _tmpAlbum;
+          if (_stmt.isNull(_columnIndexOfAlbum)) {
+            _tmpAlbum = null;
+          } else {
+            _tmpAlbum = _stmt.getText(_columnIndexOfAlbum);
+          }
+          _item.setAlbum(_tmpAlbum);
+          final long _tmpDuration;
+          _tmpDuration = _stmt.getLong(_columnIndexOfDuration);
+          _item.setDuration(_tmpDuration);
+          final String _tmpFilePath;
+          if (_stmt.isNull(_columnIndexOfFilePath)) {
+            _tmpFilePath = null;
+          } else {
+            _tmpFilePath = _stmt.getText(_columnIndexOfFilePath);
+          }
+          _item.setFilePath(_tmpFilePath);
+          final String _tmpAlbumArtUri;
+          if (_stmt.isNull(_columnIndexOfAlbumArtUri)) {
+            _tmpAlbumArtUri = null;
+          } else {
+            _tmpAlbumArtUri = _stmt.getText(_columnIndexOfAlbumArtUri);
+          }
+          _item.setAlbumArtUri(_tmpAlbumArtUri);
+          final Long _tmpMediaStoreId;
+          if (_stmt.isNull(_columnIndexOfMediaStoreId)) {
+            _tmpMediaStoreId = null;
+          } else {
+            _tmpMediaStoreId = _stmt.getLong(_columnIndexOfMediaStoreId);
+          }
+          _item.setMediaStoreId(_tmpMediaStoreId);
+          final boolean _tmpIsFavorite;
+          final int _tmp;
+          _tmp = (int) (_stmt.getLong(_columnIndexOfIsFavorite));
+          _tmpIsFavorite = _tmp != 0;
+          _item.setFavorite(_tmpIsFavorite);
+          final long _tmpDateAdded;
+          _tmpDateAdded = _stmt.getLong(_columnIndexOfDateAdded);
+          _item.setDateAdded(_tmpDateAdded);
+          final int _tmpTrackNumber;
+          _tmpTrackNumber = (int) (_stmt.getLong(_columnIndexOfTrackNumber));
+          _item.setTrackNumber(_tmpTrackNumber);
+          final String _tmpMimeType;
+          if (_stmt.isNull(_columnIndexOfMimeType)) {
+            _tmpMimeType = null;
+          } else {
+            _tmpMimeType = _stmt.getText(_columnIndexOfMimeType);
+          }
+          _item.setMimeType(_tmpMimeType);
+          final long _tmpFileSize;
+          _tmpFileSize = _stmt.getLong(_columnIndexOfFileSize);
+          _item.setFileSize(_tmpFileSize);
+          _result.add(_item);
+        }
+        return _result;
+      } finally {
+        _stmt.close();
+      }
+    });
+  }
+
+  @Override
+  public List<SongEntity> searchSync(final String query) {
+    final String _sql = "SELECT * FROM songs WHERE title LIKE '%' || ? || '%' OR artist LIKE '%' || ? || '%' OR album LIKE '%' || ? || '%' ORDER BY title ASC";
+    return DBUtil.performBlocking(__db, true, false, (_connection) -> {
+      final SQLiteStatement _stmt = _connection.prepare(_sql);
+      try {
+        int _argIndex = 1;
+        if (query == null) {
+          _stmt.bindNull(_argIndex);
+        } else {
+          _stmt.bindText(_argIndex, query);
+        }
+        _argIndex = 2;
+        if (query == null) {
+          _stmt.bindNull(_argIndex);
+        } else {
+          _stmt.bindText(_argIndex, query);
+        }
+        _argIndex = 3;
+        if (query == null) {
+          _stmt.bindNull(_argIndex);
+        } else {
+          _stmt.bindText(_argIndex, query);
+        }
+        final int _columnIndexOfId = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "id");
+        final int _columnIndexOfTitle = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "title");
+        final int _columnIndexOfArtist = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "artist");
+        final int _columnIndexOfAlbum = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "album");
+        final int _columnIndexOfDuration = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "duration");
+        final int _columnIndexOfFilePath = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "file_path");
+        final int _columnIndexOfAlbumArtUri = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "album_art_uri");
+        final int _columnIndexOfMediaStoreId = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "media_store_id");
+        final int _columnIndexOfIsFavorite = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "is_favorite");
+        final int _columnIndexOfDateAdded = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "date_added");
+        final int _columnIndexOfTrackNumber = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "track_number");
+        final int _columnIndexOfMimeType = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "mime_type");
+        final int _columnIndexOfFileSize = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "file_size");
+        final List<SongEntity> _result = new ArrayList<SongEntity>();
+        while (_stmt.step()) {
+          final SongEntity _item;
+          _item = new SongEntity();
+          final long _tmpId;
+          _tmpId = _stmt.getLong(_columnIndexOfId);
+          _item.setId(_tmpId);
+          final String _tmpTitle;
+          if (_stmt.isNull(_columnIndexOfTitle)) {
+            _tmpTitle = null;
+          } else {
+            _tmpTitle = _stmt.getText(_columnIndexOfTitle);
+          }
+          _item.setTitle(_tmpTitle);
+          final String _tmpArtist;
+          if (_stmt.isNull(_columnIndexOfArtist)) {
+            _tmpArtist = null;
+          } else {
+            _tmpArtist = _stmt.getText(_columnIndexOfArtist);
+          }
+          _item.setArtist(_tmpArtist);
+          final String _tmpAlbum;
+          if (_stmt.isNull(_columnIndexOfAlbum)) {
+            _tmpAlbum = null;
+          } else {
+            _tmpAlbum = _stmt.getText(_columnIndexOfAlbum);
+          }
+          _item.setAlbum(_tmpAlbum);
+          final long _tmpDuration;
+          _tmpDuration = _stmt.getLong(_columnIndexOfDuration);
+          _item.setDuration(_tmpDuration);
+          final String _tmpFilePath;
+          if (_stmt.isNull(_columnIndexOfFilePath)) {
+            _tmpFilePath = null;
+          } else {
+            _tmpFilePath = _stmt.getText(_columnIndexOfFilePath);
+          }
+          _item.setFilePath(_tmpFilePath);
+          final String _tmpAlbumArtUri;
+          if (_stmt.isNull(_columnIndexOfAlbumArtUri)) {
+            _tmpAlbumArtUri = null;
+          } else {
+            _tmpAlbumArtUri = _stmt.getText(_columnIndexOfAlbumArtUri);
+          }
+          _item.setAlbumArtUri(_tmpAlbumArtUri);
+          final Long _tmpMediaStoreId;
+          if (_stmt.isNull(_columnIndexOfMediaStoreId)) {
+            _tmpMediaStoreId = null;
+          } else {
+            _tmpMediaStoreId = _stmt.getLong(_columnIndexOfMediaStoreId);
+          }
+          _item.setMediaStoreId(_tmpMediaStoreId);
+          final boolean _tmpIsFavorite;
+          final int _tmp;
+          _tmp = (int) (_stmt.getLong(_columnIndexOfIsFavorite));
+          _tmpIsFavorite = _tmp != 0;
+          _item.setFavorite(_tmpIsFavorite);
+          final long _tmpDateAdded;
+          _tmpDateAdded = _stmt.getLong(_columnIndexOfDateAdded);
+          _item.setDateAdded(_tmpDateAdded);
+          final int _tmpTrackNumber;
+          _tmpTrackNumber = (int) (_stmt.getLong(_columnIndexOfTrackNumber));
+          _item.setTrackNumber(_tmpTrackNumber);
+          final String _tmpMimeType;
+          if (_stmt.isNull(_columnIndexOfMimeType)) {
+            _tmpMimeType = null;
+          } else {
+            _tmpMimeType = _stmt.getText(_columnIndexOfMimeType);
+          }
+          _item.setMimeType(_tmpMimeType);
+          final long _tmpFileSize;
+          _tmpFileSize = _stmt.getLong(_columnIndexOfFileSize);
+          _item.setFileSize(_tmpFileSize);
+          _result.add(_item);
+        }
+        return _result;
+      } finally {
+        _stmt.close();
+      }
+    });
+  }
+
+  @Override
+  public SongEntity getByMediaStoreIdSync(final long mediaStoreId) {
+    final String _sql = "SELECT * FROM songs WHERE media_store_id = ? LIMIT 1";
+    return DBUtil.performBlocking(__db, true, false, (_connection) -> {
+      final SQLiteStatement _stmt = _connection.prepare(_sql);
+      try {
+        int _argIndex = 1;
+        _stmt.bindLong(_argIndex, mediaStoreId);
+        final int _columnIndexOfId = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "id");
+        final int _columnIndexOfTitle = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "title");
+        final int _columnIndexOfArtist = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "artist");
+        final int _columnIndexOfAlbum = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "album");
+        final int _columnIndexOfDuration = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "duration");
+        final int _columnIndexOfFilePath = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "file_path");
+        final int _columnIndexOfAlbumArtUri = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "album_art_uri");
+        final int _columnIndexOfMediaStoreId = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "media_store_id");
+        final int _columnIndexOfIsFavorite = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "is_favorite");
+        final int _columnIndexOfDateAdded = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "date_added");
+        final int _columnIndexOfTrackNumber = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "track_number");
+        final int _columnIndexOfMimeType = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "mime_type");
+        final int _columnIndexOfFileSize = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "file_size");
+        final SongEntity _result;
+        if (_stmt.step()) {
+          _result = new SongEntity();
+          final long _tmpId;
+          _tmpId = _stmt.getLong(_columnIndexOfId);
+          _result.setId(_tmpId);
+          final String _tmpTitle;
+          if (_stmt.isNull(_columnIndexOfTitle)) {
+            _tmpTitle = null;
+          } else {
+            _tmpTitle = _stmt.getText(_columnIndexOfTitle);
+          }
+          _result.setTitle(_tmpTitle);
+          final String _tmpArtist;
+          if (_stmt.isNull(_columnIndexOfArtist)) {
+            _tmpArtist = null;
+          } else {
+            _tmpArtist = _stmt.getText(_columnIndexOfArtist);
+          }
+          _result.setArtist(_tmpArtist);
+          final String _tmpAlbum;
+          if (_stmt.isNull(_columnIndexOfAlbum)) {
+            _tmpAlbum = null;
+          } else {
+            _tmpAlbum = _stmt.getText(_columnIndexOfAlbum);
+          }
+          _result.setAlbum(_tmpAlbum);
+          final long _tmpDuration;
+          _tmpDuration = _stmt.getLong(_columnIndexOfDuration);
+          _result.setDuration(_tmpDuration);
+          final String _tmpFilePath;
+          if (_stmt.isNull(_columnIndexOfFilePath)) {
+            _tmpFilePath = null;
+          } else {
+            _tmpFilePath = _stmt.getText(_columnIndexOfFilePath);
+          }
+          _result.setFilePath(_tmpFilePath);
+          final String _tmpAlbumArtUri;
+          if (_stmt.isNull(_columnIndexOfAlbumArtUri)) {
+            _tmpAlbumArtUri = null;
+          } else {
+            _tmpAlbumArtUri = _stmt.getText(_columnIndexOfAlbumArtUri);
+          }
+          _result.setAlbumArtUri(_tmpAlbumArtUri);
+          final Long _tmpMediaStoreId;
+          if (_stmt.isNull(_columnIndexOfMediaStoreId)) {
+            _tmpMediaStoreId = null;
+          } else {
+            _tmpMediaStoreId = _stmt.getLong(_columnIndexOfMediaStoreId);
+          }
+          _result.setMediaStoreId(_tmpMediaStoreId);
+          final boolean _tmpIsFavorite;
+          final int _tmp;
+          _tmp = (int) (_stmt.getLong(_columnIndexOfIsFavorite));
+          _tmpIsFavorite = _tmp != 0;
+          _result.setFavorite(_tmpIsFavorite);
+          final long _tmpDateAdded;
+          _tmpDateAdded = _stmt.getLong(_columnIndexOfDateAdded);
+          _result.setDateAdded(_tmpDateAdded);
+          final int _tmpTrackNumber;
+          _tmpTrackNumber = (int) (_stmt.getLong(_columnIndexOfTrackNumber));
+          _result.setTrackNumber(_tmpTrackNumber);
+          final String _tmpMimeType;
+          if (_stmt.isNull(_columnIndexOfMimeType)) {
+            _tmpMimeType = null;
+          } else {
+            _tmpMimeType = _stmt.getText(_columnIndexOfMimeType);
+          }
+          _result.setMimeType(_tmpMimeType);
+          final long _tmpFileSize;
+          _tmpFileSize = _stmt.getLong(_columnIndexOfFileSize);
+          _result.setFileSize(_tmpFileSize);
+        } else {
+          _result = null;
+        }
+        return _result;
+      } finally {
+        _stmt.close();
+      }
+    });
+  }
+
+  @Override
+  public List<SongDao.SongIdMapping> getMediaStoreIdMappings() {
+    final String _sql = "SELECT id, media_store_id AS mediaStoreId FROM songs WHERE media_store_id IS NOT NULL";
+    return DBUtil.performBlocking(__db, true, false, (_connection) -> {
+      final SQLiteStatement _stmt = _connection.prepare(_sql);
+      try {
+        final int _columnIndexOfId = 0;
+        final int _columnIndexOfMediaStoreId = 1;
+        final List<SongDao.SongIdMapping> _result = new ArrayList<SongDao.SongIdMapping>();
+        while (_stmt.step()) {
+          final SongDao.SongIdMapping _item;
+          _item = new SongDao.SongIdMapping();
+          _item.id = _stmt.getLong(_columnIndexOfId);
+          _item.mediaStoreId = _stmt.getLong(_columnIndexOfMediaStoreId);
+          _result.add(_item);
+        }
+        return _result;
+      } finally {
+        _stmt.close();
+      }
+    });
+  }
+
+  @Override
+  public SongEntity getSongByIdSync(final long id) {
+    final String _sql = "SELECT * FROM songs WHERE id = ? LIMIT 1";
+    return DBUtil.performBlocking(__db, true, false, (_connection) -> {
+      final SQLiteStatement _stmt = _connection.prepare(_sql);
+      try {
+        int _argIndex = 1;
+        _stmt.bindLong(_argIndex, id);
+        final int _columnIndexOfId = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "id");
+        final int _columnIndexOfTitle = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "title");
+        final int _columnIndexOfArtist = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "artist");
+        final int _columnIndexOfAlbum = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "album");
+        final int _columnIndexOfDuration = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "duration");
+        final int _columnIndexOfFilePath = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "file_path");
+        final int _columnIndexOfAlbumArtUri = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "album_art_uri");
+        final int _columnIndexOfMediaStoreId = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "media_store_id");
+        final int _columnIndexOfIsFavorite = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "is_favorite");
+        final int _columnIndexOfDateAdded = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "date_added");
+        final int _columnIndexOfTrackNumber = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "track_number");
+        final int _columnIndexOfMimeType = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "mime_type");
+        final int _columnIndexOfFileSize = SQLiteStatementUtil.getColumnIndexOrThrow(_stmt, "file_size");
+        final SongEntity _result;
+        if (_stmt.step()) {
+          _result = new SongEntity();
+          final long _tmpId;
+          _tmpId = _stmt.getLong(_columnIndexOfId);
+          _result.setId(_tmpId);
+          final String _tmpTitle;
+          if (_stmt.isNull(_columnIndexOfTitle)) {
+            _tmpTitle = null;
+          } else {
+            _tmpTitle = _stmt.getText(_columnIndexOfTitle);
+          }
+          _result.setTitle(_tmpTitle);
+          final String _tmpArtist;
+          if (_stmt.isNull(_columnIndexOfArtist)) {
+            _tmpArtist = null;
+          } else {
+            _tmpArtist = _stmt.getText(_columnIndexOfArtist);
+          }
+          _result.setArtist(_tmpArtist);
+          final String _tmpAlbum;
+          if (_stmt.isNull(_columnIndexOfAlbum)) {
+            _tmpAlbum = null;
+          } else {
+            _tmpAlbum = _stmt.getText(_columnIndexOfAlbum);
+          }
+          _result.setAlbum(_tmpAlbum);
+          final long _tmpDuration;
+          _tmpDuration = _stmt.getLong(_columnIndexOfDuration);
+          _result.setDuration(_tmpDuration);
+          final String _tmpFilePath;
+          if (_stmt.isNull(_columnIndexOfFilePath)) {
+            _tmpFilePath = null;
+          } else {
+            _tmpFilePath = _stmt.getText(_columnIndexOfFilePath);
+          }
+          _result.setFilePath(_tmpFilePath);
+          final String _tmpAlbumArtUri;
+          if (_stmt.isNull(_columnIndexOfAlbumArtUri)) {
+            _tmpAlbumArtUri = null;
+          } else {
+            _tmpAlbumArtUri = _stmt.getText(_columnIndexOfAlbumArtUri);
+          }
+          _result.setAlbumArtUri(_tmpAlbumArtUri);
+          final Long _tmpMediaStoreId;
+          if (_stmt.isNull(_columnIndexOfMediaStoreId)) {
+            _tmpMediaStoreId = null;
+          } else {
+            _tmpMediaStoreId = _stmt.getLong(_columnIndexOfMediaStoreId);
+          }
+          _result.setMediaStoreId(_tmpMediaStoreId);
+          final boolean _tmpIsFavorite;
+          final int _tmp;
+          _tmp = (int) (_stmt.getLong(_columnIndexOfIsFavorite));
+          _tmpIsFavorite = _tmp != 0;
+          _result.setFavorite(_tmpIsFavorite);
+          final long _tmpDateAdded;
+          _tmpDateAdded = _stmt.getLong(_columnIndexOfDateAdded);
+          _result.setDateAdded(_tmpDateAdded);
+          final int _tmpTrackNumber;
+          _tmpTrackNumber = (int) (_stmt.getLong(_columnIndexOfTrackNumber));
+          _result.setTrackNumber(_tmpTrackNumber);
+          final String _tmpMimeType;
+          if (_stmt.isNull(_columnIndexOfMimeType)) {
+            _tmpMimeType = null;
+          } else {
+            _tmpMimeType = _stmt.getText(_columnIndexOfMimeType);
+          }
+          _result.setMimeType(_tmpMimeType);
+          final long _tmpFileSize;
+          _tmpFileSize = _stmt.getLong(_columnIndexOfFileSize);
+          _result.setFileSize(_tmpFileSize);
+        } else {
+          _result = null;
+        }
+        return _result;
+      } finally {
+        _stmt.close();
+      }
+    });
+  }
+
+  @Override
+  public LiveData<Integer> getSongCount() {
+    final String _sql = "SELECT COUNT(*) FROM songs";
+    return __db.getInvalidationTracker().createLiveData(new String[] {"songs"}, false, (_connection) -> {
+      final SQLiteStatement _stmt = _connection.prepare(_sql);
+      try {
+        final Integer _result;
+        if (_stmt.step()) {
+          final Integer _tmp;
+          if (_stmt.isNull(0)) {
+            _tmp = null;
+          } else {
+            _tmp = (int) (_stmt.getLong(0));
+          }
+          _result = _tmp;
+        } else {
+          _result = null;
+        }
+        return _result;
+      } finally {
+        _stmt.close();
+      }
+    });
+  }
+
+  @Override
+  public LiveData<List<String>> getAllAlbums() {
+    final String _sql = "SELECT DISTINCT album FROM songs ORDER BY album ASC";
+    return __db.getInvalidationTracker().createLiveData(new String[] {"songs"}, false, (_connection) -> {
+      final SQLiteStatement _stmt = _connection.prepare(_sql);
+      try {
+        final List<String> _result = new ArrayList<String>();
+        while (_stmt.step()) {
+          final String _item;
+          if (_stmt.isNull(0)) {
+            _item = null;
+          } else {
+            _item = _stmt.getText(0);
+          }
+          _result.add(_item);
+        }
+        return _result;
+      } finally {
+        _stmt.close();
+      }
+    });
+  }
+
+  @Override
+  public LiveData<List<String>> getAllArtists() {
+    final String _sql = "SELECT DISTINCT artist FROM songs ORDER BY artist ASC";
+    return __db.getInvalidationTracker().createLiveData(new String[] {"songs"}, false, (_connection) -> {
+      final SQLiteStatement _stmt = _connection.prepare(_sql);
+      try {
+        final List<String> _result = new ArrayList<String>();
+        while (_stmt.step()) {
+          final String _item;
+          if (_stmt.isNull(0)) {
+            _item = null;
+          } else {
+            _item = _stmt.getText(0);
+          }
+          _result.add(_item);
+        }
+        return _result;
+      } finally {
+        _stmt.close();
+      }
+    });
+  }
+
+  @Override
+  public int updateFavorite(final long id, final boolean isFavorite) {
+    final String _sql = "UPDATE songs SET is_favorite = ? WHERE id = ?";
+    return DBUtil.performBlocking(__db, false, true, (_connection) -> {
+      final SQLiteStatement _stmt = _connection.prepare(_sql);
+      try {
+        int _argIndex = 1;
+        final int _tmp = isFavorite ? 1 : 0;
+        _stmt.bindLong(_argIndex, _tmp);
+        _argIndex = 2;
+        _stmt.bindLong(_argIndex, id);
+        _stmt.step();
+        return SQLiteConnectionUtil.getTotalChangedRows(_connection);
+      } finally {
+        _stmt.close();
+      }
+    });
+  }
+
+  @Override
+  public int deleteById(final long id) {
+    final String _sql = "DELETE FROM songs WHERE id = ?";
+    return DBUtil.performBlocking(__db, false, true, (_connection) -> {
+      final SQLiteStatement _stmt = _connection.prepare(_sql);
+      try {
+        int _argIndex = 1;
+        _stmt.bindLong(_argIndex, id);
+        _stmt.step();
+        return SQLiteConnectionUtil.getTotalChangedRows(_connection);
+      } finally {
+        _stmt.close();
+      }
+    });
+  }
+
+  @Override
+  public int deleteAll() {
+    final String _sql = "DELETE FROM songs";
+    return DBUtil.performBlocking(__db, false, true, (_connection) -> {
+      final SQLiteStatement _stmt = _connection.prepare(_sql);
+      try {
+        _stmt.step();
+        return SQLiteConnectionUtil.getTotalChangedRows(_connection);
+      } finally {
+        _stmt.close();
+      }
+    });
+  }
+
+  @NonNull
+  public static List<Class<?>> getRequiredConverters() {
+    return Collections.emptyList();
+  }
+}

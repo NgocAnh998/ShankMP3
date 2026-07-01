@@ -206,8 +206,8 @@ public class SongRepository {
                     return;
                 }
 
-                List<Long> insertedIds = songDao.insertAll(scannedSongs);
-                callback.onComplete(insertedIds.size());
+                int count = syncScannedSongs(scannedSongs);
+                callback.onComplete(count);
             } catch (Exception e) {
                 callback.onError(e);
             }
@@ -232,8 +232,97 @@ public class SongRepository {
     public int refreshFromMediaStoreSync(@NonNull Context context) {
         List<SongEntity> scannedSongs = MediaStoreScanner.scanAllSongs(context);
         if (scannedSongs.isEmpty()) return 0;
-        List<Long> ids = songDao.insertAll(scannedSongs);
-        return ids != null ? ids.size() : 0;
+        return syncScannedSongs(scannedSongs);
+    }
+
+    /**
+     * Đồng bộ danh sách bài hát vừa quét được vào Room, KHÔNG làm mất liên kết playlist.
+     *
+     * Nguyên lý — fix triệt để lỗi "bài hát trong playlist bị xoá khi mở lại app":
+     * - preserveExistingIds() gán lại id cũ cho bài hát đã tồn tại (match theo media_store_id),
+     *   nhưng CHỈ gán id thôi là CHƯA ĐỦ: nếu vẫn dùng songDao.insertAll() (OnConflictStrategy.REPLACE),
+     *   SQLite khi gặp xung đột PRIMARY KEY (dù trùng đúng id cũ) vẫn thực hiện DELETE bản ghi cũ rồi
+     *   INSERT lại — và DELETE này vẫn kích hoạt FK ON DELETE CASCADE, xoá sạch playlist_songs.
+     * - Fix: tách rõ 2 nhóm:
+     *   + Bài hát MỚI (media_store_id chưa có trong DB) → insertAll() bình thường, không có gì để cascade.
+     *   + Bài hát ĐÃ TỒN TẠI (media_store_id đã có, được gán lại id cũ) → updateAll() — sinh câu lệnh
+     *     UPDATE thuần, không hề có DELETE nào xảy ra trên bảng songs → FK CASCADE không bị kích hoạt
+     *     → playlist_songs và is_favorite được giữ nguyên.
+     *
+     * Input: scannedSongs — danh sách bài hát quét được từ MediaStore.
+     * Output: Tổng số bài hát đã đồng bộ (insert + update).
+     */
+    private int syncScannedSongs(@NonNull List<SongEntity> scannedSongs) {
+        List<com.example.nghenhac.data.local.dao.SongDao.SongIdMapping> mappings =
+                songDao.getMediaStoreIdMappings();
+        java.util.Map<Long, com.example.nghenhac.data.local.dao.SongDao.SongIdMapping> byMediaStoreId =
+                new java.util.HashMap<>();
+        for (com.example.nghenhac.data.local.dao.SongDao.SongIdMapping mapping : mappings) {
+            byMediaStoreId.put(mapping.mediaStoreId, mapping);
+        }
+
+        preserveExistingIds(scannedSongs, mappings);
+
+        List<SongEntity> toInsert = new java.util.ArrayList<>();
+        List<SongEntity> toUpdate = new java.util.ArrayList<>();
+        for (SongEntity song : scannedSongs) {
+            Long mediaStoreId = song.getMediaStoreId();
+            com.example.nghenhac.data.local.dao.SongDao.SongIdMapping existing =
+                    mediaStoreId != null ? byMediaStoreId.get(mediaStoreId) : null;
+            if (existing != null) {
+                // Giữ nguyên trạng thái yêu thích cũ vì updateAll() ghi đè toàn bộ cột.
+                song.setFavorite(existing.isFavorite);
+                toUpdate.add(song);
+            } else {
+                toInsert.add(song);
+            }
+        }
+
+        int count = 0;
+        if (!toInsert.isEmpty()) {
+            List<Long> insertedIds = songDao.insertAll(toInsert);
+            count += insertedIds != null ? insertedIds.size() : 0;
+        }
+        if (!toUpdate.isEmpty()) {
+            songDao.updateAll(toUpdate);
+            count += toUpdate.size();
+        }
+        return count;
+    }
+
+    /**
+     * Gán lại id cũ (nếu có) cho các bài hát vừa quét được, dựa trên media_store_id.
+     *
+     * Nguyên lý — LÝ DO TỒN TẠI (bugfix quan trọng):
+     * - Bài hát vừa quét từ MediaStore luôn có id = 0 (chưa insert). Nếu không gán lại id cũ,
+     *   syncScannedSongs() sẽ không biết bài hát nào đã tồn tại để đưa vào nhóm "update", dẫn tới
+     *   insertAll() coi mọi bài hát là mới → xung đột UNIQUE INDEX media_store_id → REPLACE →
+     *   SQLite XOÁ bản ghi cũ rồi INSERT bản ghi mới với id KHÁC hoàn toàn.
+     * - Bảng playlist_songs có FK ON DELETE CASCADE tới songs.id, nên việc xoá bản ghi cũ
+     *   sẽ tự động xoá luôn mọi liên kết playlist ↔ bài hát.
+     * - Hệ quả nếu thiếu bước này: mỗi lần app quét lại thư viện (mở app, MediaStore đổi...),
+     *   toàn bộ playlist sẽ "rỗng" dù DB vẫn còn bài hát, vì liên kết cũ đã bị cascade xoá.
+     * - Fix: tra map media_store_id → id cũ, gán id đó cho SongEntity mới quét được TRƯỚC KHI
+     *   phân loại insert/update trong syncScannedSongs(). Bài hát đã tồn tại sẽ đi qua updateAll()
+     *   (UPDATE thuần, không DELETE) thay vì insertAll()/REPLACE → FK CASCADE không bị kích hoạt.
+     *
+     * Input/Output: songs — danh sách bài hát vừa quét, được sửa id tại chỗ (in-place).
+     */
+    private void preserveExistingIds(@NonNull List<SongEntity> songs,
+                                     @NonNull List<com.example.nghenhac.data.local.dao.SongDao.SongIdMapping> mappings) {
+        java.util.Map<Long, Long> mediaStoreIdToId = new java.util.HashMap<>();
+        for (com.example.nghenhac.data.local.dao.SongDao.SongIdMapping mapping : mappings) {
+            mediaStoreIdToId.put(mapping.mediaStoreId, mapping.id);
+        }
+        for (SongEntity song : songs) {
+            Long mediaStoreId = song.getMediaStoreId();
+            if (mediaStoreId != null) {
+                Long existingId = mediaStoreIdToId.get(mediaStoreId);
+                if (existingId != null) {
+                    song.setId(existingId);
+                }
+            }
+        }
     }
 
     /** Xoá tất cả bài hát (dùng khi reset app). */
